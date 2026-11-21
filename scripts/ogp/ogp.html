@@ -1,0 +1,218 @@
+<!doctype html>
+<!--
+  OGP 画像(1200×630)の元データ。
+  public/ogp.png への書き出し方は scripts/ogp/README.md を参照。
+-->
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <title>じぇみねいたー OGP</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&family=Rubik:wght@800;900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --ink: #141414;
+        --cream: #fff6e0;
+        --yellow: #ffd84d;
+        --cyan: #5cd9ff;
+        --pink: #ff8ab8;
+        --mint: #7be0a8;
+        --orange: #ff9f4a;
+        --purple: #b9a4ff;
+        --green: #6fe38a;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 1200px;
+        height: 630px;
+        overflow: hidden;
+      }
+      body {
+        position: relative;
+        background-color: var(--cream);
+        background-image: radial-gradient(rgb(20 20 20 / 0.22) 2px, transparent 2.4px);
+        background-size: 28px 28px;
+        font-family: "M PLUS Rounded 1c", "Rubik", sans-serif;
+        color: var(--ink);
+      }
+
+      /* ロゴ */
+      .logo {
+        position: absolute;
+        top: 100px;
+        left: 0;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .tile {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 128px;
+        height: 138px;
+        border: 5px solid var(--ink);
+        border-radius: 28px;
+        box-shadow: 9px 9px 0 var(--ink);
+        font-weight: 900;
+        font-size: 108px;
+        line-height: 1;
+      }
+      .tile.small {
+        width: 108px;
+        height: 116px;
+        font-size: 90px;
+      }
+      .sticker {
+        position: absolute;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 78px;
+        height: 78px;
+        border: 5px solid var(--ink);
+        border-radius: 50%;
+        box-shadow: 6px 6px 0 var(--ink);
+        font-weight: 900;
+        font-size: 46px;
+        z-index: 2;
+      }
+
+      /* チャットの吹き出し */
+      .bubble {
+        position: absolute;
+        border: 5px solid var(--ink);
+        border-radius: 30px;
+        box-shadow: 9px 9px 0 var(--ink);
+      }
+      .badge {
+        display: inline-block;
+        padding: 3px 14px 4px;
+        border-radius: 12px;
+        background: var(--ink);
+        color: #fff;
+        font-weight: 900;
+        font-size: 20px;
+        letter-spacing: 0.06em;
+      }
+      .question {
+        right: 96px;
+        top: 304px;
+        padding: 14px 34px 18px;
+        background: var(--cyan);
+        transform: rotate(1.2deg);
+      }
+      .question .text {
+        display: block;
+        margin-top: 4px;
+        font-weight: 900;
+        font-size: 44px;
+      }
+      .answer {
+        left: 104px;
+        top: 370px;
+        width: 540px;
+        padding: 18px 34px 22px;
+        background: var(--green);
+        transform: rotate(-1.2deg);
+      }
+      .answer .head {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+      }
+      .answer .head .verdict {
+        font-weight: 900;
+        font-size: 52px;
+        line-height: 1.1;
+      }
+      .bar {
+        display: flex;
+        height: 28px;
+        margin-top: 12px;
+        border: 5px solid var(--ink);
+        border-radius: 999px;
+        overflow: hidden;
+        background: #fff;
+      }
+      .bar i {
+        display: block;
+        height: 100%;
+      }
+      .legend {
+        margin-top: 10px;
+        font-weight: 800;
+        font-size: 20px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo">
+      <span
+        class="sticker"
+        style="left: 112px; top: -26px; background: var(--pink); transform: rotate(-12deg)"
+        >？</span
+      >
+      <span
+        class="sticker"
+        style="right: 112px; top: -26px; background: var(--yellow); transform: rotate(12deg)"
+        >！</span
+      >
+      <span class="tile" style="background: var(--yellow); transform: translateY(0) rotate(-5deg)"
+        >じ</span
+      >
+      <span
+        class="tile small"
+        style="background: var(--cyan); transform: translateY(-12px) rotate(3deg)"
+        >ぇ</span
+      >
+      <span class="tile" style="background: var(--pink); transform: translateY(9px) rotate(-2deg)"
+        >み</span
+      >
+      <span class="tile" style="background: var(--mint); transform: translateY(-8px) rotate(4deg)"
+        >ね</span
+      >
+      <span
+        class="tile"
+        style="background: var(--orange); transform: translateY(13px) rotate(-4deg)"
+        >い</span
+      >
+      <span class="tile" style="background: var(--purple); transform: translateY(-4px) rotate(2deg)"
+        >た</span
+      >
+      <span class="tile" style="background: var(--yellow); transform: translateY(6px) rotate(-3deg)"
+        >ー</span
+      >
+    </div>
+
+    <div class="bubble question">
+      <span class="badge">質問</span>
+      <span class="text">生き物ですか？</span>
+    </div>
+
+    <div class="bubble answer">
+      <div class="head">
+        <span class="badge">AI</span>
+        <span class="verdict">はい</span>
+      </div>
+      <div class="bar">
+        <i style="width: 85%; background: #22b14c"></i>
+        <i style="width: 6%; background: #7be0a8"></i>
+        <i style="width: 3%; background: #ff8ab8"></i>
+        <i style="width: 3%; background: #e8365d"></i>
+        <i style="width: 3%; background: #c9c9c9"></i>
+      </div>
+      <p class="legend">はい 85% ・ 部分的にはい 6% ・ いいえ 3%</p>
+    </div>
+  </body>
+</html>
