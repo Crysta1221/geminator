@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "akinator-decisions",
+  "compatibility_date": "2025-09-02",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "@tanstack/react-start/server-entry",
+  // 秘密の値は wrangler secret で入れる(README 参照)。
+  // GEMINI_API_KEY : 任意。入れると画面のキー入力欄が消え、全員がこのキーを使う。
+  // TOKEN_SECRET   : 必須。出題を暗号化する鍵。ランダムな長い文字列にする。
+  "vars": {
+    "DECISIONS_MODEL": "gemini-decision-1",
+    "TEXT_MODEL": "gemini-3.5-flash-lite",
+  },
+}

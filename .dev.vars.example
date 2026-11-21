@@ -1,0 +1,5 @@
+# ローカル開発用。コピーして .dev.vars にする(.dev.vars は git に入れない)
+TOKEN_SECRET=dev-only-change-me-please-0123456789
+# GEMINI_API_KEY=
+# DECISIONS_MODEL=gemini-decision-1
+# TEXT_MODEL=gemini-3.5-flash-lite
