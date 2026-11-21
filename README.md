@@ -1,3 +1,5 @@
+![じぇみねいたー](public/ogp.png)
+
 # じぇみねいたー
 
 Gemini Decisions API（`gemini-decision-1`）と Gemini 3.5 Flash-Lite で動く、1人でも複数人でも遊べる逆アキネイター風クイズゲームです。  
