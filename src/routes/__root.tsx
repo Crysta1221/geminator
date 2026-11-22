@@ -9,6 +9,9 @@ export const Route = createRootRoute({
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "じぇみねいたー" },
+      { name: "description", content: "Gemini Decisionsとアキネイターをしよう！" },
+      { property: "og:description", content: "Gemini Decisionsとアキネイターをしよう！" },
+      { name: "theme-color", content: "#FFD84D" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
