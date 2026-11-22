@@ -7,7 +7,7 @@ import { PlayInputDock } from "#/components/game/PlayInputDock";
 import { PlaySidebar } from "#/components/game/PlaySidebar";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
-import type { HistoryEntry } from "#/lib/client-types";
+import type { HistoryEntry, PendingHistoryEntry } from "#/lib/client-types";
 import type { ErrorCode } from "#/lib/contract";
 import { useFocusHeading } from "#/lib/use-focus-heading";
 
@@ -15,6 +15,7 @@ const STICK_THRESHOLD_PX = 80;
 
 type PlayScreenProps = {
   history: readonly HistoryEntry[];
+  pendingEntry: PendingHistoryEntry | null;
   questionCount: number;
   questionLimit: number | null;
   isGuessOnly: boolean;
@@ -31,6 +32,7 @@ type PlayScreenProps = {
 
 export function PlayScreen({
   history,
+  pendingEntry,
   questionCount,
   questionLimit,
   isGuessOnly,
@@ -105,8 +107,11 @@ export function PlayScreen({
   }, [pinToBottom]);
 
   useEffect(() => {
+    if (isSubmitting) {
+      stickToBottomRef.current = true;
+    }
     if (!stickToBottomRef.current) return;
-    if (history.length === 0 && !isSubmitting && !errorCode && !isGuessOnly) {
+    if (history.length === 0 && !isSubmitting && !pendingEntry && !errorCode && !isGuessOnly) {
       return;
     }
     pinToBottom();
@@ -114,7 +119,7 @@ export function PlayScreen({
       pinToBottom();
     });
     return () => window.cancelAnimationFrame(raf1);
-  }, [history.length, isSubmitting, errorCode, isGuessOnly, pinToBottom]);
+  }, [history.length, isSubmitting, pendingEntry, errorCode, isGuessOnly, pinToBottom]);
 
   const handleSubmitText = (trimmed: string) => {
     return isGuessOnly ? onGuess(trimmed) : onChat(trimmed);
@@ -235,6 +240,7 @@ export function PlayScreen({
           <ScrollArea className="size-full">
             <ChatMessageList
               history={history}
+              pendingEntry={pendingEntry}
               isSubmitting={isSubmitting}
               errorCode={errorCode}
               onDismissError={onDismissError}

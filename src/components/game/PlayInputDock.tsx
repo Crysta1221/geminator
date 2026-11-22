@@ -32,9 +32,10 @@ export function PlayInputDock({
     async (raw: string) => {
       const trimmed = raw.trim();
       if (!trimmed || isSubmitting) return;
+      setText("");
       const ok = await onSubmitText(trimmed);
-      if (ok) {
-        setText("");
+      if (!ok) {
+        setText(trimmed);
       }
     },
     [isSubmitting, onSubmitText],

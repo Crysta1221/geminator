@@ -43,6 +43,12 @@ export type GuessHistoryEntry = {
 
 export type HistoryEntry = AskHistoryEntry | GuessHistoryEntry;
 
+export type PendingHistoryEntry = {
+  id: string;
+  kind: "chat" | "guess";
+  text: string;
+};
+
 export type DraftSetup = {
   mode: TopicMode;
   answer: string;

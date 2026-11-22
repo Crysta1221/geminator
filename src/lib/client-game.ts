@@ -16,6 +16,7 @@ import {
   type GamePhase,
   type HistoryEntry,
   INITIAL_CONNECTION_STATE,
+  type PendingHistoryEntry,
   probeResultToView,
   type TopicMode,
   type WizardDirection,
@@ -77,6 +78,7 @@ export function useAkinatorGame(config: ConfigResult) {
   const [apiKey, setApiKey] = useState("");
   const [bgmSettings, setBgmSettings] = useState<BgmSettings>(DEFAULT_BGM_SETTINGS);
   const [errorCode, setErrorCode] = useState<ErrorCode | null>(null);
+  const [pendingEntry, setPendingEntry] = useState<PendingHistoryEntry | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingReveal, setIsLoadingReveal] = useState(false);
   const [recentRevealedNames, setRecentRevealedNames] = useState<string[]>([]);
@@ -340,6 +342,7 @@ export function useAkinatorGame(config: ConfigResult) {
     setToken("");
     setQuestionLimit(null);
     setHistory([]);
+    setPendingEntry(null);
     setReferenceBlobs([]);
     setOutcome("gave_up");
     setReveal(null);
@@ -350,14 +353,17 @@ export function useAkinatorGame(config: ConfigResult) {
 
   const handleGuess = useCallback(
     async (guess: string): Promise<boolean> => {
+      const entryId = createEntryId();
+      setPendingEntry({ id: entryId, kind: "guess", text: guess });
       setIsSubmitting(true);
       setErrorCode(null);
       try {
         const res = await submitGuess({ token, guess, apiKey: activeApiKey });
+        setPendingEntry(null);
         setHistory((prev) => [
           ...prev,
           {
-            id: createEntryId(),
+            id: entryId,
             kind: "guess",
             text: guess,
             verdict: res.verdict,
@@ -370,6 +376,7 @@ export function useAkinatorGame(config: ConfigResult) {
         }
         return true;
       } catch (err) {
+        setPendingEntry(null);
         setErrorCode(toErrorCode(err));
         return false;
       } finally {
@@ -384,6 +391,8 @@ export function useAkinatorGame(config: ConfigResult) {
       if (questionLimit !== null && countValidQuestions(history) >= questionLimit) {
         return handleGuess(message);
       }
+      const entryId = createEntryId();
+      setPendingEntry({ id: entryId, kind: "chat", text: message });
       setIsSubmitting(true);
       setErrorCode(null);
       try {
@@ -392,9 +401,10 @@ export function useAkinatorGame(config: ConfigResult) {
           message,
           apiKey: activeApiKey,
         });
+        setPendingEntry(null);
         if (res.kind === "ask") {
           const nextEntry: HistoryEntry = {
-            id: createEntryId(),
+            id: entryId,
             kind: "ask",
             text: message,
             verdict: res.verdict,
@@ -410,7 +420,7 @@ export function useAkinatorGame(config: ConfigResult) {
           setHistory((prev) => [
             ...prev,
             {
-              id: createEntryId(),
+              id: entryId,
               kind: "guess",
               text: message,
               verdict: res.verdict,
@@ -424,6 +434,7 @@ export function useAkinatorGame(config: ConfigResult) {
         }
         return true;
       } catch (err) {
+        setPendingEntry(null);
         setErrorCode(toErrorCode(err));
         return false;
       } finally {
@@ -452,6 +463,7 @@ export function useAkinatorGame(config: ConfigResult) {
     phase,
     direction,
     history,
+    pendingEntry,
     questionLimit,
     questionCount,
     isGuessOnly,

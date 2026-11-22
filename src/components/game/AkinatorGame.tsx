@@ -140,6 +140,7 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
             {game.phase === "play" && (
               <PlayScreen
                 history={game.history}
+                pendingEntry={game.pendingEntry}
                 questionCount={game.questionCount}
                 questionLimit={game.questionLimit}
                 isGuessOnly={game.isGuessOnly}
