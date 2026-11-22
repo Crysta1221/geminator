@@ -4,9 +4,9 @@
   "compatibility_date": "2025-09-02",
   "compatibility_flags": ["nodejs_compat"],
   "main": "@tanstack/react-start/server-entry",
-  // 秘密の値は wrangler secret で入れる(README 参照)。
-  // GEMINI_API_KEY : 任意。入れると画面のキー入力欄が消え、全員がこのキーを使う。
-  // TOKEN_SECRET   : 必須。出題を暗号化する鍵。ランダムな長い文字列にする。
+  // Set secret values via `wrangler secret` (see README).
+  // GEMINI_API_KEY : Optional. If set, hides the key input in the UI and all users share this key.
+  // TOKEN_SECRET   : Required. Secret key used to encrypt topics; use a long random string.
   "vars": {
     "DECISIONS_MODEL": "gemini-decision-1",
     "TEXT_MODEL": "gemini-3.5-flash-lite",

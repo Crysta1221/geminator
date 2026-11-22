@@ -145,7 +145,7 @@ function attachMediaSilenceDetector(
     try {
       source?.disconnect();
     } catch {
-      // 無視
+      // Ignore
     }
     void ctx.close().catch(() => {});
   };
@@ -187,10 +187,10 @@ function attachMediaSilenceDetector(
 }
 
 /**
- * 音声入力フック。
- * ブラウザの Web Speech API（API コスト 0）を優先し、非対応環境やネットワーク不可時のみ
- * MediaRecorder + Gemini Flash-Lite の文字起こしへフォールバックする。
- * 発話後の無音が一定時間続くと自動的に送信する。
+ * Voice input hook.
+ * Prefers the browser's Web Speech API (zero API cost) and falls back to
+ * MediaRecorder + Gemini Flash-Lite transcription only when unsupported or offline.
+ * Automatically submits after a period of silence following speech.
  */
 export function useVoiceInput({
   apiKey,
@@ -267,7 +267,7 @@ export function useVoiceInput({
       try {
         recognitionRef.current.abort();
       } catch {
-        // 無視
+        // Ignore
       }
       recognitionRef.current = null;
     }
@@ -276,7 +276,7 @@ export function useVoiceInput({
       try {
         mediaRecorderRef.current.stop();
       } catch {
-        // 無視
+        // Ignore
       }
     }
     mediaRecorderRef.current = null;
@@ -472,7 +472,7 @@ export function useVoiceInput({
           !stopRequestedRef.current &&
           canUseMediaRecorder()
         ) {
-          // Web Speech API が利用できない環境（Brave 等）では録音文字起こしへ切り替える
+          // Fall back to audio recording + transcription when Web Speech API is unavailable (e.g. Brave)
           clearSpeechTimers();
           recognition.onresult = null;
           recognition.onerror = null;

@@ -1,15 +1,15 @@
 /**
- * サーバー設定・定数・環境変数の読み込み(サーバー専用)。
- * 環境変数は process.env から読む(Cloudflare Workers は nodejs_compat で反映される)。
+ * Server configuration, constants, and environment variable loading (server-only).
+ * Environment variables are read from `process.env` (populated on Cloudflare Workers via `nodejs_compat`).
  */
 
-/** 判定のしきい値(DESIGN.md に準拠) */
+/** Evaluation thresholds (per DESIGN.md). */
 export const THRESHOLDS = {
-  /** askable(noul) がこの値未満なら invalid */
+  /** Return `invalid` when `askable` (noul) is below this value. */
   askableMin: 0.3,
-  /** guess(choice) で same が最大かつ confidence がこの値以上なら correct */
+  /** Return `correct` when `same` is highest in `guess` (choice) and confidence >= this value. */
   guessSameConfidenceMin: 0.6,
-  /** guess(choice) で close が最大かつ confidence がこの値以上なら close（見当違いを惜しいにしない） */
+  /** Return `close` when `close` is highest in `guess` (choice) and confidence >= this value (avoid marking wild guesses as close). */
   guessCloseConfidenceMin: 0.6,
 } as const;
 
@@ -33,7 +33,7 @@ function isDevMode(): boolean {
   return Boolean(import.meta.env?.DEV);
 }
 
-/** テスト用: DEV モード判定の上書きと警告フラグのリセット */
+/** For testing: override DEV mode detection and reset the warning flag. */
 export function setDevModeForTest(isDev: boolean | null): void {
   devModeOverrideForTest = isDev;
   warnedMissingTokenSecret = false;
@@ -44,8 +44,8 @@ export function getServerApiKey(): string | undefined {
 }
 
 /**
- * リクエストの apiKey があればそれを、なければ process.env.GEMINI_API_KEY を使う。
- * どちらもなければ Error("missing_api_key") を投げる。
+ * Use the request's `apiKey` if provided; otherwise fall back to `process.env.GEMINI_API_KEY`.
+ * Throws `Error("missing_api_key")` if neither is available.
  */
 export function resolveApiKey(requestApiKey?: string): string {
   const fromRequest = requestApiKey?.trim();
@@ -68,9 +68,9 @@ export function getTextModel(): string {
 }
 
 /**
- * token 暗号化用のシークレットを返す。
- * 開発時(import.meta.env.DEV)に未設定なら固定の開発用の値を使い警告を1回出す。
- * 本番で未設定なら内部エラーをログに出して Error("upstream") を投げる。
+ * Return the secret used to encrypt tokens.
+ * In development (`import.meta.env.DEV`), falls back to a fixed dev value with a one-time warning if unset.
+ * In production, logs an internal error and throws `Error("upstream")` if unset.
  */
 export function getTokenSecret(): string {
   const secret = readEnv("TOKEN_SECRET");

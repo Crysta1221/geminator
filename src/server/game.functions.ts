@@ -1,6 +1,6 @@
 /**
- * クライアントから呼ぶ Server Functions の入口。親(オーケストレーター)が管理する。
- * 中身の処理は game.server.ts に実装する。ここは入力検証と委譲だけにする。
+ * Entry point for Server Functions called from the client. Managed by the parent coordinator.
+ * Keep this file limited to input validation and delegation; implement logic in `game.server.ts`.
  */
 import { createServerFn } from "@tanstack/react-start";
 

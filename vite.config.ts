@@ -11,7 +11,7 @@ export default defineConfig({
     ignorePatterns: [...generatedFiles, "bun.lock"],
     sortImports: true,
     sortPackageJson: true,
-    // Tailwind のクラスの並べ替え。`cn` などの関数の引数も対象にする。
+    // Sort Tailwind classes, including arguments to functions like `cn`.
     sortTailwindcss: {
       stylesheet: "./src/styles.css",
       functions: ["cn", "clsx", "cva"],
@@ -28,7 +28,7 @@ export default defineConfig({
     ],
     rules: {
       "vite-plus/prefer-vite-plus-imports": "error",
-      // Tailwind CSS IntelliSense の `suggestCanonicalClasses` と同じ提案を警告として出す。
+      // Emit warnings matching Tailwind CSS IntelliSense's `suggestCanonicalClasses`.
       "better-tailwindcss/enforce-canonical-classes": "warn",
     },
     settings: {
@@ -37,7 +37,7 @@ export default defineConfig({
     options: { typeAware: true, typeCheck: true },
     overrides: [
       {
-        // bun:test の型では `await expect(...).rejects` が待てない値に見えるが、実行時には必要。
+        // In bun:test types, `await expect(...).rejects` looks non-awaitable, but it is required at runtime.
         files: ["tests/**"],
         rules: { "typescript/await-thenable": "off" },
       },

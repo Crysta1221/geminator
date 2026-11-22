@@ -272,7 +272,7 @@ export function useAkinatorGame(config: ConfigResult) {
               useSearch: nextUseSearch,
               apiKey: activeApiKey,
             });
-        // 開始前に、平文のお題・補足・ジャンル入力をメモリから消去する
+        // Clear plaintext topic, notes, and genre input from memory before starting
         setDraftSetup(EMPTY_DRAFT);
         setToken(res.token);
         setQuestionLimit(confirmedLimit);

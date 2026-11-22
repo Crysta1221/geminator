@@ -67,7 +67,7 @@ const bgmSettingsSchema = z.object({
   volume: z.number().min(0).max(1),
 });
 
-/** API キー本体を複製せず、同一キーかどうかだけを判定する短い署名を作る。 */
+/** Create a short signature to check key equality without duplicating the API key itself. */
 function computeKeySignature(keyOrServer: string): string {
   let h1 = 0x811c9dc5;
   let h2 = 0x9e3779b9;
@@ -100,7 +100,7 @@ export function saveApiKey(key: string): void {
       window.localStorage.setItem(API_KEY_STORAGE_KEY, trimmed.slice(0, LIMITS.apiKey));
     }
   } catch {
-    // localStorage が使えない環境では黙って無視する
+    // Silently ignore in environments where localStorage is unavailable
   }
 }
 
@@ -109,7 +109,7 @@ export function clearApiKey(): void {
   try {
     window.localStorage.removeItem(API_KEY_STORAGE_KEY);
   } catch {
-    // 無視
+    // Ignore
   }
 }
 
@@ -142,7 +142,7 @@ export function saveVerifiedConnection(
       }),
     );
   } catch {
-    // 無視
+    // Ignore
   }
 }
 
@@ -151,7 +151,7 @@ export function clearVerifiedConnection(): void {
   try {
     window.localStorage.removeItem(VERIFIED_CONNECTION_STORAGE_KEY);
   } catch {
-    // 無視
+    // Ignore
   }
 }
 
@@ -180,7 +180,7 @@ export function saveBgmSettings(settings: BgmSettings): void {
       }),
     );
   } catch {
-    // 無視
+    // Ignore
   }
 }
 
@@ -211,7 +211,7 @@ export function saveSession(session: PersistedSession): void {
   try {
     window.sessionStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(session));
   } catch {
-    // 無視
+    // Ignore
   }
 }
 
@@ -220,6 +220,6 @@ export function clearSession(): void {
   try {
     window.sessionStorage.removeItem(SESSION_STORAGE_KEY);
   } catch {
-    // 無視
+    // Ignore
   }
 }

@@ -22,7 +22,7 @@ describe("crypto.server", () => {
     const token = await sealJson(payload, SECRET_A);
     expect(token.startsWith("v1.")).toBe(true);
     expect(token.split(".")).toHaveLength(3);
-    // 平文の答えがトークン文字列にそのまま含まれないこと
+    // Plaintext answer must not appear directly in the token string
     expect(token).not.toContain("織田信長");
 
     const restored = await openJson<typeof payload>(token, SECRET_A);
@@ -47,17 +47,17 @@ describe("crypto.server", () => {
     const token = await sealJson({ answer: "富士山" }, SECRET_A);
     const [ver, iv, cipher] = token.split(".");
 
-    // 暗号文の1文字を改ざん
+    // Tamper with 1 character of ciphertext
     const flippedChar = cipher[0] === "A" ? "B" : "A";
     const tamperedCipher = `${ver}.${iv}.${flippedChar}${cipher.slice(1)}`;
     await expect(openJson(tamperedCipher, SECRET_A)).rejects.toThrow("bad_token");
 
-    // IV の1文字を改ざん
+    // Tamper with 1 character of IV
     const flippedIvChar = iv[0] === "A" ? "B" : "A";
     const tamperedIv = `${ver}.${flippedIvChar}${iv.slice(1)}.${cipher}`;
     await expect(openJson(tamperedIv, SECRET_A)).rejects.toThrow("bad_token");
 
-    // バージョン改ざん
+    // Tamper with version
     const tamperedVer = `v2.${iv}.${cipher}`;
     await expect(openJson(tamperedVer, SECRET_A)).rejects.toThrow("bad_token");
   });

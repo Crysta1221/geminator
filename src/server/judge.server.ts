@@ -1,5 +1,5 @@
 /**
- * 質問・最終回答の判定ロジックと文字列正規化(サーバー専用、純粋関数)。
+ * Question/guess evaluation logic and string normalization (server-only, pure functions).
  */
 import {
   type AskVerdict,
@@ -64,11 +64,11 @@ export const ZERO_PROBABILITIES: Probabilities = {
 };
 
 /**
- * 文字列照合用の正規化:
- * 1. NFKC 正規化(全角英数・半角カナなどを統一)
- * 2. 小文字化
- * 3. ひらがなをカタカナに統一
- * 4. 空白と記号・句読点を除去
+ * Normalization for string matching:
+ * 1. NFKC normalization (unify full-width alphanumerics, half-width kana, etc.)
+ * 2. Lowercase
+ * 3. Convert hiragana to katakana
+ * 4. Strip whitespace, punctuation, and symbols
  */
 export function normalizeForMatch(input: string): string {
   return input
@@ -84,7 +84,7 @@ const GUESS_SUFFIX_RE =
   /\s*(?:じゃないですか|でしょうか|ですね|ですか|だよね|だと思う|と思います|かな|です|だ)?[？?！!。.]*$/;
 
 /**
- * 「〇〇ですね」「答えは〇〇」「〇〇ですか？」のような発話から回答候補部分を取り出す。
+ * Extract the guess candidate from utterances like "〇〇ですね", "答えは〇〇", or "〇〇ですか？".
  */
 export function extractGuessCandidate(input: string): string {
   const trimmed = input.trim();
@@ -94,7 +94,7 @@ export function extractGuessCandidate(input: string): string {
 }
 
 /**
- * 最終回答が正解の名前または別名のいずれかと正規化後に一致するか判定する。
+ * Check whether the final guess matches the canonical name or any alias after normalization.
  */
 export function matchesAnswerOrAlias(guess: string, candidates: readonly string[]): boolean {
   const normalizedGuess = normalizeForMatch(guess);
@@ -111,8 +111,8 @@ export function matchesAnswerOrAlias(guess: string, candidates: readonly string[
 }
 
 /**
- * 元の入力または「〇〇ですね / 〇〇ですか？」等の枠を取り除いた候補が
- * 正解の名前・別名と一致するか判定する。
+ * Check whether the raw input or the candidate with framing (e.g. "〇〇ですね / 〇〇ですか？")
+ * stripped matches the canonical name or any alias.
  */
 export function matchesGuessCandidate(input: string, candidates: readonly string[]): boolean {
   if (matchesAnswerOrAlias(input, candidates)) {
@@ -126,7 +126,7 @@ export function matchesGuessCandidate(input: string, candidates: readonly string
 }
 
 /**
- * 5択の確率マップを完全な Probabilities に正規化する。
+ * Normalize a 5-choice probability map into a complete `Probabilities` object.
  */
 export function normalizeProbabilities(
   raw: Partial<Record<string, number>> | undefined,
@@ -170,12 +170,12 @@ function pickMaxKey<T extends string>(
 }
 
 /**
- * Decisions の応答(askable + answer)から質問の判定結果を決める。
- * - askable の noul が 0.3 未満なら invalid(確率は全部 0)
- * - それ以外は、最大確率の選択肢をそのまま採用する。確率による切り捨てはしない。
- *   「部分的に」は確率が低くてもそのまま返す。「わからない」は、どの選択肢にも
- *   当てはまらない(情報がない)ときに Decisions が最大にしたものだけを指す。
- *   検索を使わない設定でも、Decisions の判定(モデルの知識)をそのまま使う。
+ * Determine the question verdict from Decisions output (`askable` + `answer`).
+ * - If `askable` noul < 0.3, return `invalid` (all probabilities 0).
+ * - Otherwise, pick the highest-probability choice directly without a probability cutoff.
+ *   "Partially" verdicts are returned even at low probability. `unknown` refers only to
+ *   cases where Decisions gives `unknown` the highest probability due to missing information.
+ *   Even when search is disabled, rely directly on Decisions' judgment (model knowledge).
  */
 export function evaluateAskDecision(decision: QuestionDecision): {
   verdict: AskVerdict;
@@ -196,10 +196,10 @@ export function evaluateAskDecision(decision: QuestionDecision): {
 }
 
 /**
- * Decisions の応答(same / close / different)から最終回答の判定を決める。
- * - same が最大かつ confidence >= 0.6 なら correct
- * - close が最大かつ confidence >= 0.6 なら close
- * - それ以外は wrong
+ * Determine the final guess verdict from Decisions output (`same` / `close` / `different`).
+ * - `correct` if `same` is highest and `confidence >= 0.6`
+ * - `close` if `close` is highest and `confidence >= 0.6`
+ * - `wrong` otherwise
  */
 export function evaluateGuessDecision(decision: GuessDecision): GuessVerdict {
   const best = pickMaxKey(GUESS_CHOICES, decision.probabilities, decision.choice, "different");
@@ -213,7 +213,7 @@ export function evaluateGuessDecision(decision: GuessDecision): GuessVerdict {
 }
 
 /**
- * 統合チャット用の Decisions 応答(intent + ask + guess)から質問/回答のどちらかを判定する。
+ * Evaluate a unified chat Decisions response (`intent` + `ask` + `guess`) as either a question or a guess.
  */
 export function evaluateChatDecision(decision: ChatDecision): ChatEvaluated {
   const intent = pickMaxKey(
@@ -246,8 +246,8 @@ export function evaluateChatDecision(decision: ChatDecision): ChatEvaluated {
 }
 
 /**
- * Decisions の共有 input 用に正解の情報を短い見出し付きテキストにまとめる。
- * 検索結果(searchContext)があるときは末尾に一時的に追加する。
+ * Format the secret answer information as short titled text for Decisions' shared `input`.
+ * Temporarily appends `searchContext` at the end when present.
  */
 export function buildTopicInput(topic: TopicContext, searchContext?: string): string {
   const lines: string[] = ["# 正解の対象", `正式名称: ${topic.identified.name}`];

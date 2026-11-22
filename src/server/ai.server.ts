@@ -1,6 +1,6 @@
 /**
- * AI 呼び出しの抽象(interface AI)と @google/genai 実装(サーバー専用)。
- * Cloudflare Workers でも動作するよう Web 標準 API のみ使用する。
+ * AI invocation abstraction (`interface AI`) and `@google/genai` implementation (server-only).
+ * Uses only Web standard APIs so it runs on Cloudflare Workers as well.
  */
 import {
   type Decisions,
@@ -57,7 +57,7 @@ export type AIFactory = (requestApiKey?: string) => AI;
 
 let testAIFactory: AIFactory | null = null;
 
-/** テスト用: AI 実装を差し替える。null で元に戻す。 */
+/** For testing: override the AI implementation. Pass `null` to restore. */
 export function setAIFactoryForTest(factory: AIFactory | null): void {
   testAIFactory = factory;
 }
@@ -74,7 +74,7 @@ export function createAI(requestApiKey?: string): AI {
   });
 }
 
-// ---------------- プロンプト・スキーマ・リクエスト構築
+// ---------------- Prompts, schemas, and request builders
 
 const DOSSIER_JSON_SCHEMA = {
   type: "object",
@@ -128,7 +128,7 @@ const genreTopicResponseSchema = z.object({
   candidates: z.array(dossierResponseSchema).min(1),
 });
 
-/** 区切り記号の衝突を避けるため、ユーザー入力中の区切り記号だけを全角化する。 */
+/** Convert only delimiter sequences inside user input to full-width to avoid delimiter collisions. */
 function escapeDelimiter(text: string): string {
   return text.replace(/<<</g, "＜＜＜").replace(/>>>/g, "＞＞＞");
 }
@@ -391,10 +391,10 @@ export function buildProbeDecisionRequest(model: string): Decisions.CreateDecisi
   };
 }
 
-// ---------------- レスポンス解析・エラー変換
+// ---------------- Response parsing & error mapping
 
 /**
- * SDK のエラーオブジェクト(ApiError / APIError など)から HTTP ステータスコードを取り出す。
+ * Extract the HTTP status code from an SDK error object (e.g., `ApiError` / `APIError`).
  */
 export function extractHttpStatus(err: unknown): number | undefined {
   if (!err || typeof err !== "object") {
@@ -424,8 +424,8 @@ export function extractHttpStatus(err: unknown): number | undefined {
 }
 
 /**
- * Google からのエラーを契約の ErrorCode に変換する。
- * 400/401/403 -> invalid_api_key, 429 -> rate_limited, その他 -> upstream。
+ * Map a Google error to a contract `ErrorCode`.
+ * 400/401/403 -> `invalid_api_key`, 429 -> `rate_limited`, others -> `upstream`.
  */
 export function mapGoogleError(err: unknown): ErrorCode {
   const status = extractHttpStatus(err);
@@ -433,7 +433,7 @@ export function mapGoogleError(err: unknown): ErrorCode {
     return "invalid_api_key";
   }
   if (status === 400) {
-    // 400 はリクエストの形の不具合でも返る。キーを指すときだけ invalid_api_key にする。
+    // 400 can also be returned for malformed requests; treat as `invalid_api_key` only when it mentions the key.
     const message = err instanceof Error ? err.message : "";
     return /api[\s_-]?key/i.test(message) ? "invalid_api_key" : "upstream";
   }
@@ -444,8 +444,8 @@ export function mapGoogleError(err: unknown): ErrorCode {
 }
 
 /**
- * Google 側のエラーをサーバーのログに残す(原因の調査用)。
- * ステータスと Google のメッセージだけを出し、API キーは伏せる。
+ * Log Google-side errors on the server (for debugging).
+ * Logs only the status and Google's message, redacting the API key.
  */
 export function logUpstreamError(context: string, err: unknown, apiKey?: string): void {
   const status = extractHttpStatus(err);
@@ -655,7 +655,7 @@ function parseChatDecisionResponse(response: Decisions.CreateDecisionResponse): 
   };
 }
 
-// ---------------- GenAI 実装
+// ---------------- GenAI implementation
 
 export type GenAIOptions = {
   apiKey: string;
@@ -679,7 +679,7 @@ export class GenAI implements AI {
     this.textModel = options.textModel;
   }
 
-  /** Google 側の失敗をログに残し、契約のエラーコードにして返す。 */
+  /** Log a Google-side failure and return an Error with a contract error code. */
   private fail(context: string, err: unknown): Error {
     logUpstreamError(context, err, this.apiKey);
     return new Error(mapGoogleError(err));

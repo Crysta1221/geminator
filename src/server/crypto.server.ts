@@ -1,9 +1,9 @@
 /**
- * token と referenceBlob の暗号化・復号(サーバー専用)。
- * WebCrypto のみ使用(Cloudflare Workers と bun の両方で動作する)。
+ * Encryption and decryption of `token` and `referenceBlob` (server-only).
+ * Uses WebCrypto only (works on both Cloudflare Workers and bun).
  *
- * 形式: v1.<base64url(iv)>.<base64url(ciphertext)>
- * 方式: AES-GCM 256bit (鍵は TOKEN_SECRET から HKDF-SHA256 で導出)
+ * Format: `v1.<base64url(iv)>.<base64url(ciphertext)>`
+ * Algorithm: AES-GCM 256-bit (key derived from `TOKEN_SECRET` via HKDF-SHA256)
  */
 
 const TOKEN_VERSION = "v1";
@@ -77,8 +77,8 @@ async function deriveAesKey(secret: string): Promise<CryptoKey> {
 }
 
 /**
- * JSON シリアライズ可能な値を AES-GCM 256bit で暗号化し、
- * `v1.<base64url(iv)>.<base64url(ciphertext)>` 形式の文字列にして返す。
+ * Encrypt a JSON-serializable value with AES-GCM 256-bit and return it as
+ * `v1.<base64url(iv)>.<base64url(ciphertext)>`.
  */
 export async function sealJson(payload: unknown, secret: string): Promise<string> {
   const key = await deriveAesKey(secret);
@@ -94,8 +94,8 @@ export async function sealJson(payload: unknown, secret: string): Promise<string
 }
 
 /**
- * `sealJson` で暗号化した文字列を復号して JSON パースする。
- * 形式不正・改ざん・別鍵などで復号できない場合は Error("bad_token") を投げる。
+ * Decrypt a string encrypted by `sealJson` and parse it as JSON.
+ * Throws `Error("bad_token")` on malformed input, tampering, or wrong key.
  */
 export async function openJson<T = unknown>(token: string, secret: string): Promise<T> {
   const parts = token.split(".");

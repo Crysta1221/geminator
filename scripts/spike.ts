@@ -1,8 +1,8 @@
 /**
- * 実 API の挙動を確かめる検証用スクリプト。
- * GEMINI_API_KEY が環境変数にないときは「キーがないので実行しない」と表示して正常終了する。
+ * Verification script for testing real API behavior.
+ * Prints a message and exits cleanly if `GEMINI_API_KEY` is not set in environment variables.
  *
- * 実行方法: bun run spike
+ * Usage: bun run spike
  */
 import { type Decisions, GoogleGenAI } from "@google/genai";
 
@@ -86,7 +86,7 @@ async function main() {
   console.log(`DECISIONS_MODEL: ${decisionsModel}`);
   console.log(`TEXT_MODEL     : ${textModel}`);
 
-  // 1. お題の定義(補足なし、4カテゴリ各2件 = 8件)
+  // 1. Define topics (no notes, 4 categories × 2 each = 8 topics)
   const topicSeeds = [
     { group: "有名な人物", answer: "織田信長" },
     { group: "有名な人物", answer: "大谷翔平" },
@@ -124,7 +124,7 @@ async function main() {
   console.log("\n--- [1a] Flash-Lite 特定結果 ---");
   console.table(dossierRows);
 
-  // 質問 5問 × 8お題 = 40問
+  // 5 questions × 8 topics = 40 questions
   const questions = [
     "実在の人物ですか？",
     "日本に関係がありますか？",
@@ -161,7 +161,7 @@ async function main() {
   console.log("\n--- [1b] 5択 choice 検証 (40問) ---");
   console.table(askRows);
 
-  // 2. 5択 choice vs noul(yes の確率) + しきい値 の比較
+  // 2. Compare 5-way choice vs noul (yes probability) + thresholds
   const compareTargets = [
     { topic: topics[0], question: "実在の人物ですか？" },
     { topic: topics[0], question: "現在も生きていますか？" },
@@ -220,7 +220,7 @@ async function main() {
   console.log("\n--- [2] 5択 choice と noul+しきい値 の比較 ---");
   console.table(compareRows);
 
-  // 3. 最終回答(same / close / different)の検証
+  // 3. Verify final guesses (same / close / different)
   const guessCases = [
     { kind: "別名", topic: topics[0], guess: "第六天魔王" },
     { kind: "表記ゆれ", topic: topics[0], guess: "おだのぶなが" },
@@ -258,7 +258,7 @@ async function main() {
   console.log("\n--- [3] 最終回答 (same / close / different) 検証 ---");
   console.table(guessRows);
 
-  // 3b. 検索(Google 検索 grounding)の実動作と、参考文献の暗号化後のサイズ
+  // 3b. Verify real search (Google Search grounding) and encrypted reference size
   console.log("\n--- [3b] 検索 (Google 検索 grounding) ---");
   try {
     const question = "ピカチュウの最新の登場作品は何ですか?";
@@ -291,11 +291,11 @@ async function main() {
     );
   }
 
-  // 4. 所要時間サマリー
+  // 4. Timing summary
   console.log("\n--- [4] 所要時間サマリー ---");
   summarizeTimings(timings);
 
-  // VERDICTS の参照確認用ログ
+  // Log to verify VERDICTS reference
   console.log(`\n選択肢一覧: ${VERDICTS.join(", ")}`);
 }
 

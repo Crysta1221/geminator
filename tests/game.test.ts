@@ -667,7 +667,7 @@ describe("handleReveal の安全性", () => {
         "corrupted-blob",
         validBlob,
         wrongKeyBlob,
-        reg.token, // topic token を referenceBlob として渡しても弾かれる
+        reg.token, // Passing a topic token as a referenceBlob is also rejected
       ],
     });
 

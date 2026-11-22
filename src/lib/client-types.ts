@@ -55,7 +55,7 @@ export type DraftSetup = {
   notes: string;
   genre: string;
   useSearch: boolean;
-  /** null は上限なし。1〜99 の整数で上限あり。 */
+  /** null means unlimited; integers 1–99 set a limit. */
   questionLimit: number | null;
 };
 
@@ -114,7 +114,7 @@ export const GUESS_VERDICT_LABELS: Record<GuessVerdict, string> = {
   wrong: "いいえ",
 };
 
-/** 確率バーの表示順と色分け（左から はい・部分的にはい・部分的にいいえ・いいえ・わからない） */
+/** Display order and color mapping for probability bars (left to right: Yes, Partially Yes, Partially No, No, Unknown). */
 export const PROBABILITY_ORDER: readonly {
   key: Verdict;
   label: string;
@@ -162,7 +162,7 @@ export const ERROR_MESSAGES: Record<ErrorCode, string> = {
   upstream: "通信中にエラーが発生しました。少し時間を置いてからもう一度お試しください。",
 };
 
-/** 質問（invalid を除く）だけを 1 回ずつ数える。「答える」は数えない。 */
+/** Count only valid questions (excluding invalid); guesses are not counted. */
 export function countValidQuestions(history: readonly HistoryEntry[]): number {
   return history.filter((entry) => entry.kind === "ask" && entry.verdict !== "invalid").length;
 }

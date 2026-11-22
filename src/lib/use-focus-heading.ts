@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-/** 画面切り替え時に見出しへフォーカスを移す（スクロールは起こさない）。 */
+/** Moves focus to the heading on screen transitions without scrolling. */
 export function useFocusHeading<T extends HTMLElement = HTMLHeadingElement>() {
   const ref = useRef<T | null>(null);
 

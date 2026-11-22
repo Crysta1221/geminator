@@ -1,24 +1,23 @@
 /**
- * クライアントとサーバーで共有する契約。
- * ここには server 専用の import を置かないこと(ブラウザにバンドルされる)。
- * この型を変えるときは、サーバー側とクライアント側の両方に影響するため、
- * オーケストレーター(親)の承認を取ること。
+ * Shared contract between client and server.
+ * Do not place server-only imports here (this file is bundled into the browser).
+ * Modifying these types affects both client and server; obtain coordinator approval first.
  */
 import { z } from "zod";
 
-/** 質問への答え。Decisions の choice 1問で決める。 */
+/** Answer to a question, decided by a single Decisions `choice` question. */
 export const VERDICTS = ["yes", "partially_yes", "partially_no", "no", "unknown"] as const;
 export type Verdict = (typeof VERDICTS)[number];
 
-/** 質問の判定結果。invalid は「事実で答えられる質問ではない」。回数に数えない。 */
+/** Question evaluation result. `invalid` means not a fact-based yes/no question and is not counted. */
 export type AskVerdict = Verdict | "invalid";
 
-/** 最終回答の判定。close は「惜しい」(上位・下位の概念、同シリーズなど)。 */
+/** Final guess evaluation. `close` means close (broader/narrower concept, same series, etc.). */
 export type GuessVerdict = "correct" | "close" | "wrong";
 
 export type Probabilities = Record<Verdict, number>;
 
-/** 入力の上限。クライアントとサーバーで同じ値を使う。 */
+/** Input length limits shared by client and server. */
 export const LIMITS = {
   answer: 100,
   notes: 500,
@@ -28,14 +27,14 @@ export const LIMITS = {
   apiKey: 200,
 } as const;
 
-/** サーバーが投げるエラーの種類。Error.message にこの文字列だけを入れる。 */
+/** Error codes thrown by the server. Only this string is placed in `Error.message`. */
 export const ERROR_CODES = [
-  "missing_api_key", // キーがサーバー環境にも、リクエストにもない
-  "invalid_api_key", // Google から 400/401/403 相当が返った
-  "rate_limited", // Google から 429 が返った
-  "bad_token", // 復号に失敗した、または改ざんされた
-  "bad_input", // 入力検証に失敗した
-  "upstream", // それ以外の Google 側の失敗
+  "missing_api_key", // No key in server env or request
+  "invalid_api_key", // Google returned 400/401/403
+  "rate_limited", // Google returned 429
+  "bad_token", // Decryption failed or token was tampered with
+  "bad_input", // Input validation failed
+  "upstream", // Any other Google-side failure
 ] as const;
 export type ErrorCode = (typeof ERROR_CODES)[number];
 
@@ -44,7 +43,7 @@ export function toErrorCode(e: unknown): ErrorCode {
   return (ERROR_CODES as readonly string[]).includes(m) ? (m as ErrorCode) : "upstream";
 }
 
-// ---------------- 入力スキーマ(サーバー関数の validator と、クライアントの型の両方に使う)
+// ---------------- Input schemas (used for both server function validators and client types)
 
 const apiKey = z.string().trim().min(1).max(LIMITS.apiKey).optional();
 const token = z.string().min(10).max(8000);
@@ -52,7 +51,7 @@ const token = z.string().min(10).max(8000);
 export const registerInput = z.object({
   answer: z.string().trim().min(1).max(LIMITS.answer),
   notes: z.string().trim().max(LIMITS.notes).default(""),
-  /** true のとき、「わからない」の質問に限って Google 検索を使う。 */
+  /** When true, use Google Search only for questions answered as `unknown`. */
   useSearch: z.boolean().default(false),
   apiKey,
 });
@@ -89,16 +88,16 @@ export type ChatInput = z.input<typeof chatInput>;
 
 export const revealInput = z.object({
   token,
-  /** ask の戻り値 referenceBlob を、質問順に並べたもの。 */
-  // 1件の上限は余裕を持たせる。検索の本文と Search Suggestions の HTML を暗号化して base64 にするため、
-  // 数十KBになりうる。上限を超えるとここで検証に失敗し、結果画面が出なくなる。
+  /** `referenceBlob` values returned by `ask`, ordered by question. */
+  // Keep a generous per-item limit: encrypting search text + Search Suggestions HTML as base64
+  // can reach tens of KB. Exceeding this limit would fail validation and prevent the result screen from rendering.
   referenceBlobs: z.array(z.string().max(200_000)).max(500).default([]),
 });
 export type RevealInput = z.input<typeof revealInput>;
 
 export const testConnectionInput = z.object({
   apiKey,
-  /** true のとき、Google 検索(grounding)も試す。検索は1回あたり課金される。 */
+  /** When true, also probe Google Search (grounding). Each search incurs a charge. */
   checkSearch: z.boolean().default(false),
 });
 export type TestConnectionInput = z.input<typeof testConnectionInput>;
@@ -113,41 +112,41 @@ export const transcribeInput = z.object({
 });
 export type TranscribeInput = z.input<typeof transcribeInput>;
 
-// ---------------- 戻り値
+// ---------------- Return types
 
 export type ConfigResult = {
-  /** サーバー環境に GEMINI_API_KEY がある。true なら画面にキー入力欄を出さない。 */
+  /** True when `GEMINI_API_KEY` is configured on the server; hides the UI key input when true. */
   serverHasKey: boolean;
 };
 
 export type Identified = {
-  /** 正式名称 */
+  /** Canonical name */
   name: string;
   aliases: string[];
-  /** 出題者に見せる確認用の短い説明(200字程度)。 */
+  /** Short confirmation summary shown to the host (~200 chars). */
   summary: string;
-  /** モデルがこの対象を知っていると判断したか。false なら出題者に注意を出す。 */
+  /** Whether the model is confident it knows this subject; shows a warning to the host if false. */
   confident: boolean;
 };
 
 export type RegisterResult = {
-  /** 暗号化された出題。回答者の端末が保持し、質問のたびに送り返す。 */
+  /** Encrypted topic held by the guesser's client and sent back with every question. */
   token: string;
   identified: Identified;
 };
 
 export type GenerateTopicResult = {
-  /** 暗号化された出題。回答者にも答えを見せないため、identified は返さない。 */
+  /** Encrypted topic. `identified` is omitted so the answer is never exposed to the guesser. */
   token: string;
 };
 
 export type AskResult = {
   verdict: AskVerdict;
-  /** invalid のときは全部 0。 */
+  /** All zeros when `verdict` is `invalid`. */
   probabilities: Probabilities;
-  /** 「わからない」を受けて Google 検索を使った。 */
+  /** Whether Google Search was used after an initial `unknown` verdict. */
   searched: boolean;
-  /** 検索したときだけ入る。暗号化済みで、回答者は中身を読めない。終了後 revealAnswer に渡す。 */
+  /** Present only when searched; encrypted so the guesser cannot read it. Passed to `revealAnswer` on game end. */
   referenceBlob?: string;
 };
 
@@ -158,33 +157,33 @@ export type GuessResult = {
 export type ChatResult = ({ kind: "ask" } & AskResult) | ({ kind: "guess" } & GuessResult);
 
 export type Reference = {
-  /** 検索のきっかけになった質問 */
+  /** Question that triggered the search. */
   question: string;
-  /** 検索結果を要約した本文(そのまま表示する) */
+  /** Summarized search result text (rendered as-is). */
   text: string;
   sources: { title?: string; uri: string }[];
-  /** Google が返す Search Suggestions の HTML(そのまま表示する) */
+  /** Search Suggestions HTML returned by Google (rendered as-is). */
   searchSuggestionsHtml?: string;
   queries: string[];
 };
 
 export type RevealResult = {
   identified: Identified;
-  /** 出題者が入力した答えと補足 */
+  /** Answer and notes entered by the host. */
   answer: string;
   notes: string;
   references: Reference[];
 };
 
-/** 接続テストの1項目の結果。失敗のときは ErrorCode を返す。 */
+/** Result of a single connection test probe. Returns an `ErrorCode` on failure. */
 export type ProbeResult = { ok: true; ms: number } | { ok: false; error: ErrorCode };
 
 export type TestConnectionResult = {
-  /** 質問の判定(Decisions) */
+  /** Question evaluation (Decisions) */
   decisions: ProbeResult;
-  /** お題の特定(Flash-Lite) */
+  /** Topic identification (Flash-Lite) */
   text: ProbeResult;
-  /** Google 検索。checkSearch が true のときだけ入る。 */
+  /** Google Search; present only when `checkSearch` is true. */
   search?: ProbeResult;
 };
 

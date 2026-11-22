@@ -1,6 +1,6 @@
 /**
- * Wikipedia API(MediaWiki Action API) を使った無料の事実検索(サーバー専用)。
- * API キー不要で Cloudflare Workers / Bun の両方で動作する。
+ * Free fact lookup using the Wikipedia API (MediaWiki Action API) (server-only).
+ * Requires no API key and works on both Cloudflare Workers and Bun.
  */
 import type { TopicContext } from "./judge.server";
 
@@ -51,8 +51,8 @@ function isDisambiguation(item: MediaWikiSearchItem): boolean {
 }
 
 /**
- * 検索結果一覧から最も適切な Wikipedia ページを選ぶ。
- * 曖昧さ回避ページは避け、可能ならお題名と一致する記事を優先する。
+ * Pick the most appropriate Wikipedia page from search results.
+ * Avoids disambiguation pages and prefers an article matching the topic title when possible.
  */
 export function pickBestWikipediaSearchItem(
   items: readonly MediaWikiSearchItem[],
@@ -91,7 +91,7 @@ const QUESTION_STOP_TOKENS = new Set([
 ]);
 
 /**
- * 質問文から Wikipedia 本文との照合用キーワードを抽出する。
+ * Extract keywords from the question text for matching against Wikipedia body text.
  */
 export function extractQuestionKeywords(question: string): string[] {
   const matches =
@@ -110,7 +110,7 @@ export function extractQuestionKeywords(question: string): string[] {
 }
 
 /**
- * Wikipedia の本文から、冒頭概要 + 質問のキーワードに一致する段落を優先して抜粋を作る。
+ * Build an excerpt from Wikipedia body text, prioritizing the lead summary and paragraphs matching question keywords.
  */
 export function buildWikipediaExcerpt(
   extract: string,
@@ -216,7 +216,7 @@ async function searchWikipediaItems(query: string): Promise<MediaWikiSearchItem[
 }
 
 /**
- * お題に対応する日本語 Wikipedia 記事を検索して本文を取得する。
+ * Search for and fetch the Japanese Wikipedia article corresponding to the topic.
  */
 export async function fetchWikipediaArticle(topic: TopicContext): Promise<WikipediaArticle | null> {
   const primaryQuery = topic.identified.name.trim() || topic.answer.trim();

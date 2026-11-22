@@ -1,6 +1,6 @@
 /**
- * ゲームの処理本体(サーバー専用)。
- * 設計メモ(docs/DESIGN.md)に従って register / ask / guess / reveal / config / testConnection を処理する。
+ * Core game handlers (server-only).
+ * Implements register / ask / guess / reveal / config / testConnection per `docs/DESIGN.md`.
  */
 import { z } from "zod";
 
@@ -136,8 +136,8 @@ async function resolveUnknownWithSearch(
     };
   }
 
-  // Google 検索が有効なら Grounding with Google Search、無効なら無料の Wikipedia API で補う。
-  // 検索や記事取得に失敗しても質問全体は失敗させず、「検索なしの unknown」として返す。
+  // Use Grounding with Google Search when enabled; otherwise fall back to the free Wikipedia API.
+  // Even if search or article retrieval fails, do not fail the whole question—return `unknown` without search.
   let facts: Awaited<ReturnType<typeof ai.searchFacts>>;
   try {
     facts = topic.useSearch
@@ -177,8 +177,8 @@ export async function handleAsk(data: z.output<typeof askInput>): Promise<AskRes
   const ai = createAI(data.apiKey);
 
   const firstDecision = await ai.judgeQuestion(topic, data.question);
-  // 判定は Decisions の最大確率をそのまま採用する(確率による切り捨てはしない)。
-  // 検索を使う設定のときだけ、「わからない」を検索に回す。
+  // Pick the highest-probability choice from Decisions directly (no probability cutoff).
+  // Only trigger search for `unknown` when search is configured.
   const judged = evaluateAskDecision(firstDecision);
   return resolveUnknownWithSearch(ai, topic, data.question, secret, judged);
 }
@@ -227,7 +227,7 @@ export async function handleReveal(data: z.output<typeof revealInput>): Promise<
       const ref = await openReferenceBlob(blob, secret);
       references.push(ref);
     } catch {
-      // 復号できないものは捨てる
+      // Discard blobs that fail decryption
     }
   }
 

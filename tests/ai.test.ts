@@ -33,7 +33,7 @@ const SAMPLE_TOPIC: TopicContext = {
 };
 
 const QUESTION_KEY_RE = /^[A-Za-z0-9_-]{1,64}$/;
-// oxlint-disable-next-line no-control-regex -- Decisions API の選択肢キー規則(制御文字禁止)を検証する
+// oxlint-disable-next-line no-control-regex -- Verify Decisions API choice-key rule (no control characters)
 const CONTROL_CHAR_RE = /[\u0000-\u001F\u007F]/;
 
 function assertValidChoiceKeys(criteria: Record<string, string>) {
