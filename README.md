@@ -86,6 +86,9 @@ bun run deploy
 - Tailwind CSS v4 / [neobrutalism.dev](https://www.neobrutalism.dev/) ベース UI コンポーネント（`@base-ui/react`）
 - `@google/genai` / [Vite+](https://viteplus.dev/)（oxlint・oxfmt） / Bun
 
+## ライセンス
+リポジトリ内のコードはMIT LICENSEとして提供されます。
+
 ## Inspire
 
 - メインのUI及び実装参考  
