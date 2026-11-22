@@ -160,7 +160,7 @@ export function GenreScreen({
               disabled={!canSubmit}
               className="group min-h-11 cursor-pointer border-[3px] px-6 text-base font-black"
             >
-              <span>お題を作ってはじめる</span>
+              <span>次へ</span>
               <ArrowRight
                 className="size-4 transition-transform duration-200 group-hover:translate-x-1"
                 aria-hidden="true"
