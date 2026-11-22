@@ -56,7 +56,7 @@ export function PlayInputDock({
     onListeningChange?.(voice.isListening);
   }, [voice.isListening, onListeningChange]);
 
-  // 送信や文字起こしが終わって入力欄が再び有効になったら自動でフォーカスを戻す
+  // Automatically restore focus to the input when submission or transcription finishes and it becomes enabled again
   useEffect(() => {
     if (wasBusyRef.current && !isBusy) {
       inputRef.current?.focus();
@@ -73,7 +73,7 @@ export function PlayInputDock({
   return (
     <div
       data-slot="play-input-dock"
-      className="shrink-0 border-t-[3px] border-border bg-background px-3.5 pt-3.5 pb-[calc(16px+env(safe-area-inset-bottom))] sm:px-4"
+      className="shrink-0 border-t-[3px] border-border bg-background px-3 pt-3 pb-[calc(12px+env(safe-area-inset-bottom))] sm:px-4 sm:pt-3.5 sm:pb-[calc(16px+env(safe-area-inset-bottom))]"
     >
       <div className="flex flex-col gap-3">
         {(voice.isListening || voice.isTranscribing) && (
@@ -112,7 +112,7 @@ export function PlayInputDock({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="flex gap-4">
+        <form onSubmit={handleSubmit} className="flex gap-2 sm:gap-3">
           <Label htmlFor="play-input" className="sr-only">
             {isGuessOnly ? "答えを入力" : "質問や予想を入力"}
           </Label>
@@ -157,7 +157,7 @@ export function PlayInputDock({
           <Button
             type="submit"
             disabled={!canSubmit}
-            className="h-11 min-w-[84px] shrink-0 cursor-pointer border-[3px] px-4 font-black"
+            className="h-11 shrink-0 cursor-pointer border-[3px] px-3 font-black sm:min-w-[84px] sm:px-4"
           >
             <Send className="size-4" aria-hidden="true" />
             <span>{isGuessOnly ? "答える" : "送信"}</span>

@@ -7,7 +7,7 @@ export const GENRE_STEPS = ["モード", "ジャンル", "接続確認"] as cons
 export const MODE_SELECT_STEPS = ["モード", "設定", "接続確認"] as const;
 
 type WizardShellProps = {
-  /** ステップ番号。省略時はドットを出さない */
+  /** Step index; omit to hide the step dots. */
   step?: number;
   steps?: readonly string[];
   children: ReactNode;
@@ -22,9 +22,10 @@ export function WizardShell({
 }: WizardShellProps) {
   return (
     <div className="mx-auto flex size-full max-w-[1040px] flex-col justify-center p-4 sm:p-6 lg:p-8 [@media(max-height:700px)]:py-2.5">
+      {/* Keep justify-center on the outer wrapper so tall cards scroll from the top instead of clipping */}
       <div
         className={cn(
-          "neobrutal-stage flex min-h-0 w-full flex-col justify-center gap-3.5 bg-secondary-background p-4 sm:gap-5 sm:p-6 lg:p-8 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:p-3.5",
+          "neobrutal-stage flex max-h-full min-h-0 w-full flex-col gap-3.5 overflow-y-auto overscroll-contain bg-secondary-background p-4 sm:gap-5 sm:p-6 lg:p-8 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:p-3.5",
           className,
         )}
       >

@@ -72,7 +72,8 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
 
   return (
     <MotionConfig reducedMotion="user">
-      <main className="h-dvh w-full overflow-hidden pb-[72px] min-[1360px]:pb-0">
+      {/* Reserve bottom clearance for the fixed bottom-right settings gear (bottom-4 right-4 size-12) below 1360px */}
+      <main className="h-dvh w-full overflow-hidden pb-14 sm:pb-16 min-[1360px]:pb-0">
         <AnimatePresence mode="wait" custom={game.direction} initial={false}>
           <motion.div
             key={game.phase}
