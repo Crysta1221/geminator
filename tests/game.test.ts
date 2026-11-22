@@ -1,8 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
 import { type AI, setAIFactoryForTest } from "#/server/ai.server";
-import { setDevModeForTest } from "#/server/config.server";
-import { sealJson } from "#/server/crypto.server";
 import {
   handleAsk,
   handleChat,
@@ -14,10 +12,7 @@ import {
   handleTranscribe,
 } from "#/server/game.server";
 
-const TEST_SECRET = "unit-test-token-secret-0123456789abcdef";
-
 const ORIGINAL_ENV = {
-  TOKEN_SECRET: process.env.TOKEN_SECRET,
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
 };
 
@@ -32,15 +27,12 @@ function restoreEnv() {
 }
 
 beforeEach(() => {
-  process.env.TOKEN_SECRET = TEST_SECRET;
   delete process.env.GEMINI_API_KEY;
   setAIFactoryForTest(null);
-  setDevModeForTest(null);
 });
 
 afterEach(() => {
   setAIFactoryForTest(null);
-  setDevModeForTest(null);
   restoreEnv();
 });
 
@@ -127,7 +119,7 @@ function createStubAI(overrides: Partial<AI> = {}): AI {
   };
 }
 
-describe("config & API キー / TOKEN_SECRET の扱い", () => {
+describe("config & API キーの扱い", () => {
   test("handleConfig は serverHasKey を返す", () => {
     expect(handleConfig()).toEqual({ serverHasKey: false });
 
@@ -139,46 +131,6 @@ describe("config & API キー / TOKEN_SECRET の扱い", () => {
     await expect(handleRegister({ answer: "富士山", notes: "", useSearch: false })).rejects.toThrow(
       "missing_api_key",
     );
-  });
-
-  test("TOKEN_SECRET が本番で未設定なら bad_token ではなく upstream になる", async () => {
-    delete process.env.TOKEN_SECRET;
-    setDevModeForTest(false);
-    setAIFactoryForTest(() => createStubAI());
-
-    const origError = console.error;
-    console.error = () => {};
-    try {
-      await expect(
-        handleRegister({ answer: "富士山", notes: "", useSearch: false }),
-      ).rejects.toThrow("upstream");
-    } finally {
-      console.error = origError;
-    }
-  });
-
-  test("TOKEN_SECRET が開発モードで未設定なら固定値で動き警告を1回だけ出す", async () => {
-    delete process.env.TOKEN_SECRET;
-    setDevModeForTest(true);
-    setAIFactoryForTest(() => createStubAI());
-
-    let warnCount = 0;
-    const origWarn = console.warn;
-    console.warn = () => {
-      warnCount++;
-    };
-    try {
-      const r1 = await handleRegister({
-        answer: "富士山",
-        notes: "",
-        useSearch: false,
-      });
-      const r2 = await handleReveal({ token: r1.token, referenceBlobs: [] });
-      expect(r2.answer).toBe("富士山");
-      expect(warnCount).toBe(1);
-    } finally {
-      console.warn = origWarn;
-    }
   });
 });
 
@@ -644,7 +596,7 @@ describe("handleGuess の判定と Decisions 省略", () => {
 });
 
 describe("handleReveal の安全性", () => {
-  test("壊れた referenceBlob や別鍵の blob、token の流用は捨てて正常なものだけ返す", async () => {
+  test("壊れた referenceBlob や形式違いの blob、token の流用は捨てて正常なものだけ返す", async () => {
     setAIFactoryForTest(() => createStubAI());
     const reg = await handleRegister({
       answer: "富士山",
@@ -658,15 +610,14 @@ describe("handleReveal の安全性", () => {
       sources: [{ title: "国土地理院", uri: "https://example.com/gsi" }],
       queries: ["富士山 標高"],
     };
-    const validBlob = await sealJson(validRef, TEST_SECRET);
-    const wrongKeyBlob = await sealJson(validRef, "another-secret-key-123456");
+    const validBlob = JSON.stringify(validRef);
 
     const reveal = await handleReveal({
       token: reg.token,
       referenceBlobs: [
         "corrupted-blob",
         validBlob,
-        wrongKeyBlob,
+        JSON.stringify({ question: "q" }), // Missing required fields
         reg.token, // Passing a topic token as a referenceBlob is also rejected
       ],
     });
@@ -678,16 +629,14 @@ describe("handleReveal の安全性", () => {
   });
 
   test("referenceBlob を token として渡すと bad_token になる", async () => {
-    const refBlob = await sealJson(
-      {
-        question: "q",
-        text: "t",
-        sources: [],
-        queries: [],
-      },
-      TEST_SECRET,
-    );
+    const refBlob = JSON.stringify({ question: "q", text: "t", sources: [], queries: [] });
     await expect(handleReveal({ token: refBlob, referenceBlobs: [] })).rejects.toThrow("bad_token");
+  });
+
+  test("JSON として読めない token は bad_token になる", async () => {
+    await expect(handleReveal({ token: "not-a-json-token", referenceBlobs: [] })).rejects.toThrow(
+      "bad_token",
+    );
   });
 });
 

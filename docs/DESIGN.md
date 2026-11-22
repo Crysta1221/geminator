@@ -5,7 +5,7 @@ A 2-player Akinator-style game powered by the Gemini Decisions API. Built to del
 ## Game Flow
 
 1. The host (question setter) enters a topic (the answer) and optional notes. Notes are used to disambiguate between different subjects with the same name.
-2. The server identifies the answer (canonical name, aliases, summary) and packs it into an encrypted `token`. There is no confirmation screen; the identified result is shown alongside the answer on the result screen.
+2. The server identifies the answer (canonical name, aliases, summary) and packs it into a `token`. There is no confirmation screen; the identified result is shown alongside the answer on the result screen.
 3. Hand off the device to the guesser.
 4. The guesser asks free-form questions. The server returns one of `"yes"`, `"partially_yes"`, `"partially_no"`, `"no"`, or `"unknown"` ("はい / 部分的にはい / 部分的にいいえ / いいえ / わからない"). The host can optionally set a question limit (unlimited by default). The client tracks the count; the server does not. Once the limit is reached, the game transitions to the answer-entry phase (without revealing the answer).
 5. The guesser submits a final guess in "Answer" mode. The server returns `"correct"`, `"close"`, or `"wrong"` ("正解 / 惜しい / 違う").
@@ -16,14 +16,13 @@ A 2-player Akinator-style game powered by the Gemini Decisions API. Built to del
 - Framework: TanStack Start (React 19, Vite). Deployed to Cloudflare Workers. Package manager: bun.
 - UI: neobrutalism.dev (shadcn registry, Base UI edition). Tailwind v4.
 - AI: Uses `@google/genai` (3.x) directly. Does not use TanStack AI.
-- No database. The topic is encrypted by the server into a string (`token`) and stored on the guesser's client. The client sends the `token` back on every question, and the server decrypts it for use. The guesser cannot read the answer.
+- No database. The topic is serialized by the server into a JSON string (`token`) and stored on the guesser's client. The client sends the `token` back on every question, and the server parses it for use. The token is not encrypted, so a guesser who inspects network traffic or `localStorage` can read the answer; the UI simply does not display it until the game ends.
 - API key: Uses the server environment variable `GEMINI_API_KEY` if present. Otherwise, uses the key entered by the user in the browser. The key is stored only in the browser's `localStorage`. The server neither persists nor logs it, holding it in memory only for the duration of the request. Never include the key in error messages.
 
 ## Environment Variables (Server)
 
 | Name | Required | Description |
 | --- | --- | --- |
-| `TOKEN_SECRET` | Required in production | Source secret for the `token` encryption key. In development (`import.meta.env.DEV`), falls back to a fixed dev value with a warning if unset. |
 | `GEMINI_API_KEY` | Optional | When set, hides the API key input field in the UI. |
 | `DECISIONS_MODEL` | Optional | Defaults to `gemini-decision-1`. |
 | `TEXT_MODEL` | Optional | Defaults to `gemini-3.5-flash-lite`. |
@@ -38,10 +37,9 @@ Environment variables are read from `process.env` (populated on Workers via `nod
 
 ### Token
 
-- AES-GCM 256-bit. The key is derived from `TOKEN_SECRET` using HKDF-SHA256. Uses WebCrypto only (works on both Cloudflare Workers and bun).
-- Format: `v1.<base64url(iv)>.<base64url(ciphertext)>`.
+- Plain JSON string (not encrypted, no secret key required).
 - Payload (JSON): the entered answer and notes, the identification result (`Identified`), and `useSearch`.
-- Throws `Error("bad_token")` if decryption fails.
+- Throws `Error("bad_token")` if the string is not valid JSON or does not match the payload schema.
 
 ### Registration (`handleRegister`)
 
@@ -70,7 +68,7 @@ Calls Decisions once. Places the secret information in the shared `input` and li
 - When the highest probability is `unknown` and `useSearch` in the `token` is `true`:
   1. Call Flash-Lite with the Google Search tool (`tools: [{ googleSearch: {} }]`, thinking `MINIMAL`) to concisely summarize facts relevant to the answer and the question.
   2. Temporarily append that summary to the end of `input` and call Decisions again. Do not cache this summary or carry it over to the next question.
-  3. Bundle the summary, sources (`groundingChunks`), Search Suggestions (`groundingMetadata.searchEntryPoint.renderedContent`), and search queries (`webSearchQueries`) into a `Reference`, encrypt it with `sealJson`, and return it in `referenceBlob`. The guesser cannot read it.
+  3. Bundle the summary, sources (`groundingChunks`), Search Suggestions (`groundingMetadata.searchEntryPoint.renderedContent`), and search queries (`webSearchQueries`) into a `Reference`, serialize it as a JSON string, and return it in `referenceBlob`.
   4. If the re-evaluation is still `unknown`, return `unknown` as-is. At most one search per question.
 - `searched` indicates whether a search was executed.
 
@@ -82,8 +80,8 @@ Calls Decisions once. Places the secret information in the shared `input` and li
 
 ### Reveal (`handleReveal`)
 
-- Decrypts `token` and returns `Identified`, the answer, and notes.
-- Decrypts `referenceBlobs` into `Reference[]`. Any blobs that fail decryption are discarded.
+- Parses `token` and returns `Identified`, the answer, and notes.
+- Parses `referenceBlobs` into `Reference[]`. Any blobs that fail to parse are discarded.
 
 ### Connection Test (`handleTestConnection`)
 

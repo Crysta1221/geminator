@@ -46,7 +46,7 @@ export function StartingScreen({ topicMode }: StartingScreenProps) {
           <p className="m-0 text-xs font-bold text-foreground/75 sm:text-sm">
             {isGenre
               ? "Gemini 3.5 Flash-Lite がジャンルから秘密のお題を考えています。少々お待ちください。"
-              : "AI がお題を特定して暗号化しています。少々お待ちください。"}
+              : "AI がお題を特定しています。少々お待ちください。"}
           </p>
         </output>
       </div>

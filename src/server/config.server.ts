@@ -16,27 +16,9 @@ export const THRESHOLDS = {
 export const DEFAULT_DECISIONS_MODEL = "gemini-decision-1";
 export const DEFAULT_TEXT_MODEL = "gemini-3.5-flash-lite";
 
-const DEV_FALLBACK_TOKEN_SECRET = "dev-only-insecure-token-secret-do-not-use-in-production";
-
-let warnedMissingTokenSecret = false;
-let devModeOverrideForTest: boolean | null = null;
-
 function readEnv(name: string): string | undefined {
   const value = process.env[name]?.trim();
   return value ? value : undefined;
-}
-
-function isDevMode(): boolean {
-  if (devModeOverrideForTest !== null) {
-    return devModeOverrideForTest;
-  }
-  return Boolean(import.meta.env?.DEV);
-}
-
-/** For testing: override DEV mode detection and reset the warning flag. */
-export function setDevModeForTest(isDev: boolean | null): void {
-  devModeOverrideForTest = isDev;
-  warnedMissingTokenSecret = false;
 }
 
 export function getServerApiKey(): string | undefined {
@@ -65,27 +47,4 @@ export function getDecisionsModel(): string {
 
 export function getTextModel(): string {
   return readEnv("TEXT_MODEL") ?? DEFAULT_TEXT_MODEL;
-}
-
-/**
- * Return the secret used to encrypt tokens.
- * In development (`import.meta.env.DEV`), falls back to a fixed dev value with a one-time warning if unset.
- * In production, logs an internal error and throws `Error("upstream")` if unset.
- */
-export function getTokenSecret(): string {
-  const secret = readEnv("TOKEN_SECRET");
-  if (secret) {
-    return secret;
-  }
-  if (isDevMode()) {
-    if (!warnedMissingTokenSecret) {
-      warnedMissingTokenSecret = true;
-      console.warn(
-        "[config] TOKEN_SECRET が未設定のため、開発用の固定値を使用します。本番環境では必ず設定してください。",
-      );
-    }
-    return DEV_FALLBACK_TOKEN_SECRET;
-  }
-  console.error("[config] TOKEN_SECRET が設定されていません。本番環境では起動前に設定が必要です。");
-  throw new Error("upstream");
 }

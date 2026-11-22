@@ -47,7 +47,7 @@ Gemini API キーは [Google AI Studio](https://aistudio.google.com/) で取得�
 
 ```bash
 bun install
-cp .dev.vars.example .dev.vars   # TOKEN_SECRET（と必要に応じて GEMINI_API_KEY）を設定
+cp .dev.vars.example .dev.vars   # 必要に応じて GEMINI_API_KEY を設定
 bun run dev                      # http://localhost:3000
 ```
 
@@ -67,14 +67,12 @@ bun run dev                      # http://localhost:3000
 
 ```bash
 bunx wrangler login
-bunx wrangler secret put TOKEN_SECRET     # ランダムな長い文字列（本番必須）
 bunx wrangler secret put GEMINI_API_KEY   # 任意。設定すると画面のキー入力欄が消えます
 bun run deploy
 ```
 
 | 環境変数          | 必須       | 内容                                                 |
 | ----------------- | ---------- | ---------------------------------------------------- |
-| `TOKEN_SECRET`    | 本番は必須 | 出題トークンの暗号鍵の元。長いランダム文字列にします |
 | `GEMINI_API_KEY`  | 任意       | 設定すると全員がこのキーを使います                   |
 | `DECISIONS_MODEL` | 任意       | 既定は `gemini-decision-1`                           |
 | `TEXT_MODEL`      | 任意       | 既定は `gemini-3.5-flash-lite`                       |

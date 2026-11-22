@@ -9,7 +9,6 @@ import { type Decisions, GoogleGenAI } from "@google/genai";
 import { VERDICTS, type Verdict } from "../src/lib/contract";
 import { GenAI, buildQuestionDecisionRequest } from "../src/server/ai.server";
 import { getDecisionsModel, getTextModel } from "../src/server/config.server";
-import { sealJson } from "../src/server/crypto.server";
 import {
   type TopicContext,
   buildTopicInput,
@@ -258,30 +257,27 @@ async function main() {
   console.log("\n--- [3] 最終回答 (same / close / different) 検証 ---");
   console.table(guessRows);
 
-  // 3b. Verify real search (Google Search grounding) and encrypted reference size
+  // 3b. Verify real search (Google Search grounding) and reference size
   console.log("\n--- [3b] 検索 (Google 検索 grounding) ---");
   try {
     const question = "ピカチュウの最新の登場作品は何ですか?";
     const { result: facts, ms } = await measure(timings, "Flash-Lite (search)", () =>
       ai.searchFacts(topics[2], question),
     );
-    const blob = await sealJson(
-      {
-        question,
-        text: facts.text,
-        sources: facts.sources,
-        searchSuggestionsHtml: facts.searchSuggestionsHtml,
-        queries: facts.queries,
-      },
-      "spike-only-secret",
-    );
+    const blob = JSON.stringify({
+      question,
+      text: facts.text,
+      sources: facts.sources,
+      searchSuggestionsHtml: facts.searchSuggestionsHtml,
+      queries: facts.queries,
+    });
     console.log({
       ms: Math.round(ms),
       本文の文字数: facts.text.length,
       出典の数: facts.sources.length,
       SearchSuggestionsのHTML文字数: facts.searchSuggestionsHtml?.length ?? 0,
       検索クエリ: facts.queries,
-      暗号化後のblob文字数: blob.length,
+      blob文字数: blob.length,
       blob上限: 200000,
     });
   } catch (e) {

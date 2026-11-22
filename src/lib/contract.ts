@@ -32,7 +32,7 @@ export const ERROR_CODES = [
   "missing_api_key", // No key in server env or request
   "invalid_api_key", // Google returned 400/401/403
   "rate_limited", // Google returned 429
-  "bad_token", // Decryption failed or token was tampered with
+  "bad_token", // Token could not be parsed or has an invalid shape
   "bad_input", // Input validation failed
   "upstream", // Any other Google-side failure
 ] as const;
@@ -89,7 +89,7 @@ export type ChatInput = z.input<typeof chatInput>;
 export const revealInput = z.object({
   token,
   /** `referenceBlob` values returned by `ask`, ordered by question. */
-  // Keep a generous per-item limit: encrypting search text + Search Suggestions HTML as base64
+  // Keep a generous per-item limit: search text + Search Suggestions HTML
   // can reach tens of KB. Exceeding this limit would fail validation and prevent the result screen from rendering.
   referenceBlobs: z.array(z.string().max(200_000)).max(500).default([]),
 });
@@ -130,13 +130,13 @@ export type Identified = {
 };
 
 export type RegisterResult = {
-  /** Encrypted topic held by the guesser's client and sent back with every question. */
+  /** Topic (JSON string) held by the guesser's client and sent back with every question. */
   token: string;
   identified: Identified;
 };
 
 export type GenerateTopicResult = {
-  /** Encrypted topic. `identified` is omitted so the answer is never exposed to the guesser. */
+  /** Topic (JSON string). `identified` is omitted from the response so the UI never shows the answer. */
   token: string;
 };
 
@@ -146,7 +146,7 @@ export type AskResult = {
   probabilities: Probabilities;
   /** Whether Google Search was used after an initial `unknown` verdict. */
   searched: boolean;
-  /** Present only when searched; encrypted so the guesser cannot read it. Passed to `revealAnswer` on game end. */
+  /** Present only when searched; JSON string. Passed to `revealAnswer` on game end. */
   referenceBlob?: string;
 };
 

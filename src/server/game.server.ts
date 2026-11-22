@@ -28,8 +28,7 @@ import {
 } from "#/lib/contract";
 
 import { type AI, createAI, type ProbeKind } from "./ai.server";
-import { getServerApiKey, getTokenSecret } from "./config.server";
-import { openJson, sealJson } from "./crypto.server";
+import { getServerApiKey } from "./config.server";
 import {
   evaluateAskDecision,
   evaluateChatDecision,
@@ -65,18 +64,24 @@ const referenceSchema = z.object({
   queries: z.array(z.string()),
 });
 
-async function openTopicToken(token: string, secret: string): Promise<TopicTokenPayload> {
-  const raw = await openJson<unknown>(token, secret);
-  const parsed = topicTokenSchema.safeParse(raw);
+function parseJsonOrBadToken(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error("bad_token");
+  }
+}
+
+function openTopicToken(token: string): TopicTokenPayload {
+  const parsed = topicTokenSchema.safeParse(parseJsonOrBadToken(token));
   if (!parsed.success) {
     throw new Error("bad_token");
   }
   return parsed.data;
 }
 
-async function openReferenceBlob(blob: string, secret: string): Promise<Reference> {
-  const raw = await openJson<unknown>(blob, secret);
-  const parsed = referenceSchema.safeParse(raw);
+function openReferenceBlob(blob: string): Reference {
+  const parsed = referenceSchema.safeParse(parseJsonOrBadToken(blob));
   if (!parsed.success) {
     throw new Error("bad_token");
   }
@@ -92,7 +97,6 @@ export function handleConfig(): ConfigResult {
 export async function handleRegister(
   data: z.output<typeof registerInput>,
 ): Promise<RegisterResult> {
-  const secret = getTokenSecret();
   const ai = createAI(data.apiKey);
   const identified = await ai.makeDossier(data.answer, data.notes);
   const payload: TopicTokenPayload = {
@@ -101,14 +105,12 @@ export async function handleRegister(
     identified,
     useSearch: data.useSearch,
   };
-  const token = await sealJson(payload, secret);
-  return { token, identified };
+  return { token: JSON.stringify(payload), identified };
 }
 
 export async function handleGenerateTopic(
   data: z.output<typeof generateTopicInput>,
 ): Promise<GenerateTopicResult> {
-  const secret = getTokenSecret();
   const ai = createAI(data.apiKey);
   const identified = await ai.generateTopicFromGenre(data.genre, data.excludeNames);
   const payload: TopicTokenPayload = {
@@ -117,15 +119,13 @@ export async function handleGenerateTopic(
     identified,
     useSearch: data.useSearch,
   };
-  const token = await sealJson(payload, secret);
-  return { token };
+  return { token: JSON.stringify(payload) };
 }
 
 async function resolveUnknownWithSearch(
   ai: AI,
   topic: TopicTokenPayload,
   question: string,
-  secret: string,
   initial: Pick<AskResult, "verdict" | "probabilities">,
 ): Promise<AskResult> {
   if (initial.verdict !== "unknown") {
@@ -158,7 +158,7 @@ async function resolveUnknownWithSearch(
     ...(facts.searchSuggestionsHtml ? { searchSuggestionsHtml: facts.searchSuggestionsHtml } : {}),
     queries: facts.queries,
   };
-  const referenceBlob = await sealJson(reference, secret);
+  const referenceBlob = JSON.stringify(reference);
 
   const secondDecision = await ai.judgeQuestion(topic, question, facts.text);
   const rejudged = evaluateAskDecision(secondDecision);
@@ -172,20 +172,18 @@ async function resolveUnknownWithSearch(
 }
 
 export async function handleAsk(data: z.output<typeof askInput>): Promise<AskResult> {
-  const secret = getTokenSecret();
-  const topic = await openTopicToken(data.token, secret);
+  const topic = openTopicToken(data.token);
   const ai = createAI(data.apiKey);
 
   const firstDecision = await ai.judgeQuestion(topic, data.question);
   // Pick the highest-probability choice from Decisions directly (no probability cutoff).
   // Only trigger search for `unknown` when search is configured.
   const judged = evaluateAskDecision(firstDecision);
-  return resolveUnknownWithSearch(ai, topic, data.question, secret, judged);
+  return resolveUnknownWithSearch(ai, topic, data.question, judged);
 }
 
 export async function handleGuess(data: z.output<typeof guessInput>): Promise<GuessResult> {
-  const secret = getTokenSecret();
-  const topic = await openTopicToken(data.token, secret);
+  const topic = openTopicToken(data.token);
 
   const candidates = [topic.answer, topic.identified.name, ...topic.identified.aliases];
   if (matchesGuessCandidate(data.guess, candidates)) {
@@ -198,8 +196,7 @@ export async function handleGuess(data: z.output<typeof guessInput>): Promise<Gu
 }
 
 export async function handleChat(data: z.output<typeof chatInput>): Promise<ChatResult> {
-  const secret = getTokenSecret();
-  const topic = await openTopicToken(data.token, secret);
+  const topic = openTopicToken(data.token);
 
   const candidates = [topic.answer, topic.identified.name, ...topic.identified.aliases];
   if (matchesGuessCandidate(data.message, candidates)) {
@@ -213,21 +210,19 @@ export async function handleChat(data: z.output<typeof chatInput>): Promise<Chat
     return { kind: "guess", verdict: evaluated.verdict };
   }
 
-  const askResult = await resolveUnknownWithSearch(ai, topic, data.message, secret, evaluated);
+  const askResult = await resolveUnknownWithSearch(ai, topic, data.message, evaluated);
   return { kind: "ask", ...askResult };
 }
 
 export async function handleReveal(data: z.output<typeof revealInput>): Promise<RevealResult> {
-  const secret = getTokenSecret();
-  const topic = await openTopicToken(data.token, secret);
+  const topic = openTopicToken(data.token);
 
   const references: Reference[] = [];
   for (const blob of data.referenceBlobs) {
     try {
-      const ref = await openReferenceBlob(blob, secret);
-      references.push(ref);
+      references.push(openReferenceBlob(blob));
     } catch {
-      // Discard blobs that fail decryption
+      // Discard blobs that fail to parse
     }
   }
 

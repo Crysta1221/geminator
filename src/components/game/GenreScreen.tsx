@@ -196,7 +196,7 @@ export function GenreScreen({
             </ul>
           </div>
           <p className="m-0 text-[11px] font-bold text-foreground/70">
-            ※ 作成されたお題は暗号化され、正解するかギブアップするまで表示されません。
+            ※ 作成されたお題は、正解するかギブアップするまで画面に表示されません。
           </p>
         </aside>
       </div>
