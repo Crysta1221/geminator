@@ -1,4 +1,5 @@
-import { Music, Settings, Volume2, VolumeX } from "lucide-react";
+import { FolderOpen, Music, RotateCcw, Settings, Volume2, VolumeX } from "lucide-react";
+import { type ChangeEvent, useRef } from "react";
 
 import { ApiKeyField } from "#/components/game/ApiKeyField";
 import { Button } from "#/components/ui/button";
@@ -15,7 +16,10 @@ import {
 import { Label } from "#/components/ui/label";
 import { Slider } from "#/components/ui/slider";
 import { Switch } from "#/components/ui/switch";
+import { clearCustomBgm, saveCustomBgm, useCustomBgm } from "#/lib/bgm-store";
 import type { BgmSettings } from "#/lib/storage";
+
+const DEFAULT_BGM_LABEL = "天国と地獄（デフォルト）";
 
 type ApiKeySettingsDialogProps = {
   serverHasKey: boolean;
@@ -37,6 +41,17 @@ export function ApiKeySettingsDialog({
   onBgmVolumeChange,
 }: ApiKeySettingsDialogProps) {
   const volumePercent = Math.round(bgmSettings.volume * 100);
+  const { fileName: customBgmName } = useCustomBgm();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const activeTrackName = customBgmName ?? DEFAULT_BGM_LABEL;
+
+  const handleFileChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    // Reset input value so selecting the same file again still fires onChange.
+    event.target.value = "";
+    if (!file) return;
+    void saveCustomBgm(file);
+  };
 
   return (
     <Dialog>
@@ -87,7 +102,7 @@ export function ApiKeySettingsDialog({
                   className="flex items-center gap-1.5 text-sm font-black"
                 >
                   <Music className="size-4 shrink-0" aria-hidden="true" />
-                  BGM（天国と地獄）
+                  BGM
                 </Label>
                 <p className="m-0 text-xs font-bold text-foreground/75">
                   質問中に BGM を再生します
@@ -130,6 +145,52 @@ export function ApiKeySettingsDialog({
               <span className="w-10 shrink-0 text-right text-xs font-black tabular-nums">
                 {volumePercent}%
               </span>
+            </div>
+
+            <div className="space-y-2 border-t-2 border-border/15 pt-2.5">
+              <div className="flex items-center justify-between gap-2">
+                <span className="shrink-0 text-xs font-black">再生中の曲</span>
+                <span
+                  className="min-w-0 truncate text-xs font-bold text-foreground/80"
+                  title={activeTrackName}
+                >
+                  {activeTrackName}
+                </span>
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                className="hidden"
+                aria-label="BGM の音声ファイルを選択"
+                onChange={handleFileChange}
+              />
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  type="button"
+                  variant="neutral"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="min-h-9 cursor-pointer border-[2.5px] font-black"
+                >
+                  <FolderOpen className="size-4" aria-hidden="true" />
+                  BGMを変更
+                </Button>
+                {customBgmName && (
+                  <Button
+                    type="button"
+                    variant="neutral"
+                    size="sm"
+                    onClick={() => void clearCustomBgm()}
+                    className="min-h-9 cursor-pointer border-[2.5px] font-black"
+                  >
+                    <RotateCcw className="size-4" aria-hidden="true" />
+                    デフォルトに戻す
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
         </div>

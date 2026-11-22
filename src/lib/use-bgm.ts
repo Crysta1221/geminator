@@ -1,5 +1,7 @@
 import { useEffect, useRef } from "react";
 
+import { useCustomBgm } from "#/lib/bgm-store";
+
 const BGM_SRC = "/audio/heaven-and-hell.m4a";
 const CORRECT_SFX_SRC = "/audio/cheer-applause.mp3";
 
@@ -10,24 +12,31 @@ type UseBgmOptions = {
   ducked?: boolean;
 };
 
-/** 質問フェーズ中に BGM をループ再生する。音量調整・マイク録音中のダッキング・自動再生ブロック時のフォールバックを備える。 */
+/** Loops BGM during the question phase with volume control, mic-recording ducking, and autoplay-block fallback. */
 export function useBgm({ active, enabled, volume, ducked = false }: UseBgmOptions) {
+  const { url: customBgmUrl } = useCustomBgm();
+  const bgmSrc = customBgmUrl ?? BGM_SRC;
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const effectiveVolume = Math.max(0, Math.min(1, ducked ? volume * 0.2 : volume));
+  const volumeRef = useRef(effectiveVolume);
+  volumeRef.current = effectiveVolume;
 
   useEffect(() => {
     if (typeof Audio === "undefined") return;
-    const audio = new Audio(BGM_SRC);
+    const audio = new Audio(bgmSrc);
     audio.loop = true;
     audio.preload = "auto";
+    audio.volume = volumeRef.current;
     audioRef.current = audio;
 
     return () => {
       audio.pause();
       audio.src = "";
-      audioRef.current = null;
+      if (audioRef.current === audio) {
+        audioRef.current = null;
+      }
     };
-  }, []);
+  }, [bgmSrc]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -80,10 +89,10 @@ export function useBgm({ active, enabled, volume, ducked = false }: UseBgmOption
       cancelled = true;
       detachUnlock?.();
     };
-  }, [active, enabled, effectiveVolume]);
+  }, [active, enabled, effectiveVolume, bgmSrc]);
 }
 
-/** 正解時の結果画面で歓声と拍手の効果音を 1 回再生する。 */
+/** Plays the cheer and applause sound effect once on the result screen when answered correctly. */
 export function useCorrectSound(active: boolean, enabled: boolean, volume: number) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const clampedVolume = Math.max(0, Math.min(1, volume));
