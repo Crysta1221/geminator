@@ -1,146 +1,146 @@
-# UI 設計(じぇみねいたー)
+# UI Design (じぇみねいたー)
 
-名前は「じぇみねいたー」。askjev.app の見た目の方向(クリーム色に水玉、太い黒枠、硬い影)を保ちつつ、幅を広げた横長のレイアウトにする。ヘッダーとタイトルバーは、どの画面にも置かない(上部の帯、区切り線、固定バー、隅の小さなロゴを含む)。ロゴは `landing` の中央の大きなロゴだけにする。実装時にこの文書と食い違う判断をしたくなったら、実装せず報告する。
+The app is named "じぇみねいたー". Keep the visual direction of askjev.app (polka dots on a cream background, thick black borders, hard shadows) while using a wider landscape layout. Do not place a header or title bar on any screen (including top bands, divider lines, fixed bars, or small corner logos). The logo appears only as a large centered logo on `landing`. If an implementation decision conflicts with this document, report it instead of implementing it.
 
-## 画面の流れ
+## Screen Flow
 
-ウィザード形式。1画面に1つの用件だけを置く。戻るボタンで1つ前へ戻れる。
+Wizard format. Each screen handles a single task. A back button returns to the previous step.
 
-| 段階       | 画面                 | 内容                                                                                     |
-| ---------- | -------------------- | ---------------------------------------------------------------------------------------- |
-| `landing`  | はじめに             | ロゴ、説明、「はじめる →」                                                               |
-| `intro`    | 出題者へ             | 「出題者の人に画面を見せてください」「お題を決めましょう」。アイコンつき。「つづける →」 |
-| `topic`    | お題と補足           | お題(答え)、補足、オプション(Google 検索のスイッチ、質問回数の上限)。「つぎへ →」        |
-| `connect`  | API キーと接続テスト | キー入力、接続テスト、「次へ →」                                                         |
-| `starting` | 解析中               | お題を解析している間の待ち画面(`registerTopic` の呼び出し中)                             |
-| `handoff`  | 交代                 | 「回答者に画面を渡してください」。アイコンと「質問をはじめる →」だけ                     |
-| `play`     | 質問                 | 回答者がチャットで質問する                                                               |
-| `result`   | 結果                 | 答えの公開、質問の履歴、参考文献、「もう一度遊ぶ」                                       |
+| Stage | Screen | Content |
+| --- | --- | --- |
+| `landing` | Landing | Logo, description, "はじめる →" |
+| `intro` | For the Host | "出題者の人に画面を見せてください", "お題を決めましょう", icon, "つづける →" |
+| `topic` | Topic & Notes | Topic (answer), notes, options (Google Search toggle, question limit), "つぎへ →" |
+| `connect` | API Key & Connection Test | Key input, connection test, "次へ →" |
+| `starting` | Analyzing | Waiting screen while analyzing the topic (during `registerTopic` call) |
+| `handoff` | Handoff | "回答者に画面を渡してください", icon, and "質問をはじめる →" only |
+| `play` | Play | Guesser asks questions in a chat interface |
+| `result` | Result | Answer reveal, question history, references, "もう一度遊ぶ" |
 
-- `intro` の「出題者」は、お題を決める人のこと。回答者(当てる人)に、この画面から先を見せない。
-- `connect` で、サーバーに `GEMINI_API_KEY` がある(`getConfig` の `serverHasKey` が true)ときは、キー入力欄を出さず、「このサーバーのキーを使います」と出す。接続テストは自動で始める。
-- お題と補足は、`topic` から `starting`(`registerTopic` の完了)までの間だけメモリ(React の状態)に持つ。`sessionStorage` や `localStorage` に書かない。`handoff` に進んだ時点で、平文のお題・補足・特定結果を状態から消す。確認画面は作らない(`starting` の次は `handoff`)。
-- 再読み込みで続けられるのは `handoff` 以降(token・質問の履歴・参考文献の blob・段階を `sessionStorage` に保存)。`landing` から `starting` までは、再読み込みで `landing` に戻ってよい。
+- On `intro`, the "host" ("出題者") is the person choosing the topic. Do not let the guesser see this screen or any subsequent setup screens.
+- On `connect`, if the server has `GEMINI_API_KEY` (`getConfig`'s `serverHasKey` is `true`), hide the key input field, display "このサーバーのキーを使います", and start the connection test automatically.
+- Keep the topic and notes in memory (React state) only from `topic` through `starting` (until `registerTopic` completes). Do not write them to `sessionStorage` or `localStorage`. Once advancing to `handoff`, clear the plaintext topic, notes, and identified result from state. Do not build a confirmation screen (`starting` goes straight to `handoff`).
+- Reload recovery is supported from `handoff` onward (persist `token`, question history, reference blobs, and stage in `sessionStorage`). From `landing` through `starting`, a reload may return to `landing`.
 
-## 画面ごとの内容
+## Screen Details
 
-### landing
+### `landing`
 
-- 中央に大きなロゴ(下の「ロゴ」)。ロゴの下に、説明の帯や1行コピーは置かない(ロゴ、3枚のカード、「はじめる」ボタンだけ)。
-- 遊び方の3つのカードを横に並べる(狭い画面では縦)。それぞれにアイコン。
-  1. 見出し「お題を決める」、補足「出題者が、当ててもらう答えを決めます」。
-  2. 見出し「自由に質問する」、補足「回答者の質問に、AI が『はい / 部分的に / いいえ / わからない』で答えます。確率バーで推測しよう！」。
-  3. 見出し「答えを当てる」、補足「わかったら『答える』で解答。AI が『正解 / 惜しい / 違う』を判定します」。
-  - 質問するのは回答者で、「はい / いいえ」などで答えるのは AI。この向きを取り違えた文言にしない(例「『はい / いいえ』で質問する」は誤り)。質問回数の話は、ここ(カード)には書かない。
-- 「はじめる」ボタン(大きく、右に矢印アイコン)。
-- 「非公式の個人制作」などの注記・フッターは出さない(どの画面にも)。
+- Large centered logo (see "Logo" below). Do not place a description banner or one-line tagline below the logo (only the logo, 3 cards, and the "はじめる" button).
+- 3 how-to-play cards side by side (stacked vertically on narrow screens), each with an icon:
+  1. Heading "お題を決める", body "出題者が、当ててもらう答えを決めます".
+  2. Heading "自由に質問する", body "回答者の質問に、AI が『はい / 部分的に / いいえ / わからない』で答えます。確率バーで推測しよう！".
+  3. Heading "答えを当てる", body "わかったら『答える』で解答。AI が『正解 / 惜しい / 違う』を判定します".
+  - The guesser asks questions, and the AI answers with "yes / no", etc. Never invert this direction in the copy (e.g., "Ask with yes/no" is wrong). Do not mention question limits on these cards.
+- "はじめる" button (large, with a right arrow icon).
+- Never show disclaimers like "Unofficial personal project" or footers on any screen.
 
-### intro
+### `intro`
 
-- 縦積み。横に広い画面でも、左右に分けない。上に大きなアイコンだけ(`EyeOff` など。アイコンの下に「出題者だけが見る画面」のようなラベルやバッジは付けない。アイコンは動かさない)。その下に見出し「出題者の人に画面を見せてください」、サブコピー「答える人は、このあとの画面を見ないでください。」、大きな見出し「お題を決めましょう」を、中央寄せで置く。
-- 「つづける →」と、小さな「もどる」。
+- Vertical stack. Even on wide screens, do not split left/right. Place only a large icon on top (e.g., `EyeOff`; do not add a label or badge like "Host-only screen" below the icon; do not animate the icon). Below it, center-align the heading "出題者の人に画面を見せてください", subcopy "答える人は、このあとの画面を見ないでください。", and large heading "お題を決めましょう".
+- "つづける →" and a small "もどる".
 
-### topic
+### `topic`
 
-- lg 以上は2カラム。左にフォーム(お題、補足)、右に「書き方のコツ」のカード。
-- お題の下に「答えは正式名称で入力してください。」。補足の下に「同じ名前の別の人物・作品・物などが複数考えられる場合は、どれを指すかを補足に書いてください。」。
-- 書き方のコツのカードには、例を2〜3個出す(例「さくら」→ 補足「春に咲く花」)。
-- フォームの下に「オプション」のグループを置き、次の2つを入れる。
-  - 「わからないときに Google 検索を使う」のスイッチ。説明は「AI が『わからない』と判断した質問だけ検索で補い、終了後に参考文献を表示します。」。
-  - 「質問回数の上限」の選択。セグメント式(「なし」「10回」「20回」「30回」「自由に入力」)。既定は「なし」。「自由に入力」を選ぶと数字の入力欄が出る(1〜99の整数)。説明は「質問するたびに1回カウントされます。」。
-- 入力の文字数の表示と上限は `LIMITS` に従う。お題が空のときは「つぎへ」を無効にする。
+- 2 columns on `lg` and above: form (topic, notes) on the left, "Tips" ("書き方のコツ") card on the right.
+- Below the topic field: "答えは正式名称で入力してください。". Below the notes field: "同じ名前の別の人物・作品・物などが複数考えられる場合は、どれを指すかを補足に書いてください。".
+- In the Tips card, show 2–3 examples (e.g., "さくら" → notes "春に咲く花").
+- Place an "Options" ("オプション") group below the form with two controls:
+  - Toggle for "わからないときに Google 検索を使う", with description "AI が『わからない』と判断した質問だけ検索で補い、終了後に参考文献を表示します。".
+  - Segmented control for "質問回数の上限" ("なし", "10回", "20回", "30回", "自由に入力"). Default is "なし". Selecting "自由に入力" reveals a numeric input (integer 1–99). Description: "質問するたびに1回カウントされます。".
+- Character counters and limits follow `LIMITS`. Disable "つぎへ" when the topic is empty.
 
-### connect
+### `connect`
 
-- 縦積み。上に説明のブロック(見出し「API キーと接続テスト」、「キーはこのブラウザにだけ保存され、サーバーには保存されません。」、「キーの取得(Google AI Studio)」へのリンク、「質問の判定」と「お題の特定」の両方が成功すると次へ進めるという案内)。その下に、キー入力と接続テスト。lg 以上では、キー入力と接続テストの結果を横に2つ並べてよい。左に空の大きなパネルを作らない。
-- キー入力欄(パスワード形式、表示切り替え)。入力したキーは `localStorage` にだけ保存する(`try/catch` で包む)。「キーを消す」ボタン。「キーはこのブラウザにだけ保存され、サーバーには保存されません。」と、「キーの取得(Google AI Studio)」へのリンク(`https://aistudio.google.com/apikey`、新しいタブ)。
-- 「接続テスト」ボタン。押すと `testConnection` を呼び、結果を3行のチェックリストで出す。
-  - 「質問の判定(Decisions)」「お題の特定(Gemini 3.5 Flash-Lite)」「Google 検索」(検索のスイッチが入っているときだけ)。
-  - 各行は、待機 → 実行中(スピナー) → 成功(チェック、所要ミリ秒)/失敗(×、日本語のエラーメッセージ)。
-- 「次へ →」ボタン(「はじめよう！」ではない)は、「質問の判定」と「お題の特定」が両方成功するまで無効。
-- 「Google 検索」だけが失敗したときは、警告として「検索は使えませんでした(無料枠のキーなど)。検索なしで続けますか」と出し、「検索なしで続ける」ボタンで `useSearch` を false にして進める。
-- 「次へ →」を押すと `starting` へ進み、`registerTopic` を呼ぶ。成功したら、そのまま `handoff` へ進む。失敗したら、エラーを出してこの画面に戻す。
+- Vertical stack. At the top, an explanation block (heading "API キーと接続テスト", "キーはこのブラウザにだけ保存され、サーバーには保存されません。", link to "キーの取得(Google AI Studio)", and note that both "質問の判定" and "お題の特定" must succeed to proceed). Below that, the key input and connection test. On `lg` and above, key input and connection test results may sit side by side. Do not leave a large empty panel on the left.
+- Key input field (password type with visibility toggle). Save the entered key only in `localStorage` (wrapped in `try/catch`). "キーを消す" button. "キーはこのブラウザにだけ保存され、サーバーには保存されません。" and link to "キーの取得(Google AI Studio)" (`https://aistudio.google.com/apikey`, new tab).
+- "接続テスト" button. Clicking calls `testConnection` and renders results in a 3-row checklist:
+  - "質問の判定(Decisions)", "お題の特定(Gemini 3.5 Flash-Lite)", and "Google 検索" (only when the search toggle is enabled).
+  - Each row transitions through: waiting → running (spinner) → success (check + elapsed ms) / failure (× + Japanese error message).
+- "次へ →" button (not "はじめよう！") stays disabled until both "質問の判定" and "お題の特定" succeed.
+- If only "Google 検索" fails, show a warning "検索は使えませんでした(無料枠のキーなど)。検索なしで続けますか" with a "検索なしで続ける" button that sets `useSearch` to `false` and proceeds.
+- Clicking "次へ →" advances to `starting` and calls `registerTopic`. On success, proceed directly to `handoff`. On failure, show an error and return to this screen.
 
-### starting
+### `starting`
 
-- ロゴのタイルが順に跳ねる待ち画面。「お題を解析しています…」。縦積み、中央寄せ。
+- Waiting screen where the logo tiles bounce in sequence. Copy: "お題を解析しています…". Vertical stack, centered.
 
-### handoff
+### `handoff`
 
-- 縦積み(横に広い画面でも、左右に分けない)。上に大きなアイコン(`Smartphone` など。矢印は付けない)、その下に見出し「回答者に画面を渡してください」、「質問をはじめる →」ボタンだけ。中央寄せ。アイコンは動かさない(アニメーションなし)。
-- 「暗号化」「答えは画面に出ません」など、仕組みの説明は書かない。バッジも付けない。
+- Vertical stack (do not split left/right even on wide screens). Large icon at the top (`Smartphone`, etc.; no arrow), heading "回答者に画面を渡してください", and only the "質問をはじめる →" button below. Centered. Do not animate the icon.
+- Do not explain mechanics like "encrypted" or "the answer won't appear on screen", and do not add badges.
 
-### play
+### `play`
 
-- 幅が広い画面(lg 以上)は、左にチャット、右にサイドパネル。狭い画面は、サイドパネルの内容を上部の細いバーにまとめる(質問数とギブアップ)。
-- 5つの答えの並びは、左から「はい」「部分的にはい」「部分的にいいえ」「いいえ」「わからない」(「わからない」を一番右)。確率のバー、文字の内訳、サイドパネルの凡例、結果画面の履歴のすべてで、同じ並びにする。
-- チャット: 質問が右、AI の答えが左の吹き出し。答えの吹き出しに、5つの確率の色つきバーと文字の内訳を付ける(アクセシビリティのため、色だけに頼らない)。`searched` が true の答えには「検索して調べました」の小さな印。`invalid` は「はい / いいえで答えられる質問にしてください」と出し、回数に数えない。
-- 入力ドック(画面の下に固定。隣り合うボタン・入力欄の間隔は、横も縦も 16px 以上。硬い影で見かけの間隔が縮むので、見た目で 12px 以上空くこと): 「質問する」と「答える」のモード切り替え、入力欄、送信ボタン。「答える」モードでは `guessAnswer` を呼ぶ。`correct` は結果画面へ、`close` は「惜しい！」、`wrong` は「違います」。
-- サイドパネル: 回数(大きな数字)、凡例(5つの答えの色)、モードの説明、「ギブアップして答えを見る」(2段階の確認つき)。
-- 回数の数え方: 質問するたびに1回カウントする(`invalid` は数えない)。「答える」は数えない。上限が「なし」のときは「質問 N」と出す。上限があるときは「N / 上限」と残りの量のバーを出し、残り3回以下で色と動きで強調する。上限の判定は端末側で行う(サーバーは数えない)。上限は `sessionStorage` に保存してよい(秘密ではない)。
-- 上限に達したら「答えを入力するフェーズ」に入る。答えは出さない(自動で `result` へ進まない)。このフェーズでは、質問のモードとモード切り替えを隠し、入力欄を「答えを入力」(最終回答)だけにする。サイドパネルには「質問の回数に達しました。答えを入力してください」と出す。「答える」は回数に数えず、何度でも試せる(`correct` で `result` へ、`close` は「惜しい！」、`wrong` は「違います」)。
-- このフェーズでは、サイドパネルの「ギブアップして答えを見る」を「わからない」ボタンに置き換える。「わからない」を押すと、確認なしで `result` へ進み、答えを公開する。上限なしのときや、上限に達する前は、従来どおり「ギブアップして答えを見る」(2段階の確認つき)。
-- 余白: チャット一覧の中身には、上下に 16px 以上の内側余白を取る(最初の吹き出しをカードの上端に密着させない)。最後の吹き出しと入力ドックの間にも 12px 以上のすき間を取り、ドックの下端には 16px 以上(`env(safe-area-inset-bottom)` を加味)の余白を取る。最後の吹き出しがドックに隠れないこと。5つの画面サイズで、目視と数値で確かめる。
-- 質問の送信中は入力を無効にし、AI の吹き出しに考え中のドットを出す。
-- エラーは、目立つ場所(チャット内のカード)に日本語で出す。`bad_token` は「出題が壊れています。最初からやり直してください」と、「最初からやり直す」ボタン。
+- On wide screens (`lg` and above): chat on the left, side panel on the right. On narrow screens: collapse the side panel into a slim top bar (question count and give up).
+- Order of the 5 answer choices from left to right: "はい", "部分的にはい", "部分的にいいえ", "いいえ", "わからない" ("わからない" on the far right). Use this exact same order for probability bars, text breakdowns, the side panel legend, and the result screen history.
+- Chat: guesser's questions on the right, AI's answers on the left. Answer bubbles include a 5-color probability bar and a text breakdown (for accessibility, never rely on color alone). Answers with `searched === true` show a small "検索して調べました" badge. `invalid` displays "はい / いいえで答えられる質問にしてください" and does not increment the question count.
+- Input dock (fixed at the bottom of the screen; spacing between adjacent buttons/inputs must be at least 16px both horizontally and vertically, so at least 12px remains visually after hard shadows): mode toggle between "質問する" and "答える", input field, and send button. In "答える" mode, calls `guessAnswer`: `correct` goes to `result`, `close` shows "惜しい！", `wrong` shows "違います".
+- Side panel: question count (large number), legend (colors for the 5 answers), mode explanation, and "ギブアップして答えを見る" (with 2-step confirmation).
+- Counting questions: increment by 1 per valid question (`invalid` is not counted). "答える" is not counted. When limit is "なし", show "質問 N". When a limit is set, show "N / 上限" with a remaining-count bar, emphasizing with color and motion when 3 or fewer remain. Limit enforcement happens client-side (the server does not count). The limit may be stored in `sessionStorage` (it is not secret).
+- When the limit is reached, enter the "answer-entry phase" without revealing the answer (do not auto-advance to `result`). In this phase, hide the question mode and mode toggle, leaving only the "答えを入力" (final guess) input. Show "質問の回数に達しました。答えを入力してください" in the side panel. "答える" is not counted and can be retried any number of times (`correct` goes to `result`, `close` shows "惜しい！", `wrong` shows "違います").
+- In this phase, replace "ギブアップして答えを見る" in the side panel with a "わからない" button. Clicking "わからない" advances to `result` without confirmation and reveals the answer. When there is no limit or before the limit is reached, keep "ギブアップして答えを見る" (with 2-step confirmation).
+- Padding: give the chat list contents at least 16px top/bottom inner padding (do not let the first bubble touch the top edge of the card). Leave at least 12px between the last bubble and the input dock, and at least 16px (plus `env(safe-area-inset-bottom)`) below the dock. The last bubble must not be hidden behind the dock. Verify visually and numerically across all 5 viewport sizes.
+- While a question is in flight, disable input and show bouncing thinking dots in an AI bubble.
+- Display errors prominently (in a card inside the chat) in Japanese. For `bad_token`, show "出題が壊れています。最初からやり直してください" with a "最初からやり直す" button.
 
-### result
+### `result`
 
-- 見出し(正解なら「正解！」、ギブアップまたは「わからない」なら「ギブアップ」)、答え(正式名称)、補足、回数(上限があるときは「N / 上限」)。
-- 参考文献(あれば): 検索のきっかけになった質問ごとに、本文(テキストとして出す。HTML として解釈しない)、出典のリンク(`target="_blank"` `rel="noopener noreferrer"`)、Google の Search Suggestions(`sandbox="allow-popups allow-popups-to-escape-sandbox"` の iframe の `srcDoc`、先頭に `<base target="_blank">`。加工しない)。
-- 質問の履歴。「もう一度遊ぶ」(`landing` へ戻り、状態をすべて消す)。
-- 再読み込みで `result` に戻ったときは、`revealAnswer` を自動で呼び直す。
+- Heading ("正解！" if solved, "ギブアップ" if given up or "わからない"), answer (canonical name), notes, question count ("N / 上限" when a limit is set).
+- References (if any): for each question that triggered a search, show the summary text (rendered as plain text, not HTML), source links (`target="_blank"` `rel="noopener noreferrer"`), and Google Search Suggestions (`iframe` with `sandbox="allow-popups allow-popups-to-escape-sandbox"` and `srcDoc` prepended with `<base target="_blank">`, unmodified).
+- Question history. "もう一度遊ぶ" (returns to `landing` and clears all state).
+- When reloading onto `result`, automatically re-call `revealAnswer`.
 
-## 設定(API キー)
+## Settings (API Key)
 
-- 画面の右下に、歯車のボタンを固定で置く(`Settings` アイコン、44px 以上、neobrutalism のボタン、余白 16px)。`landing` から `result` まで、どの段階でも使える。`getConfig` の `serverHasKey` が true のときは出さない。
-- 押すと、設定のダイアログ(neobrutalism の `Dialog`、`src/components/ui/dialog.tsx` を追加)が開く。中身は、API キー(入力、表示の切り替え、「キーを消す」、「キーの取得(Google AI Studio)」へのリンク、保存の注意書き)と、接続テスト(`connect` 画面と同じチェックリスト)。「閉じる」で閉じる。キーは `connect` 画面と同じ保存先(`localStorage`)を使い、画面とダイアログで同じ値を共有する(コンポーネントも共有する)。
-- 歯車は、画面のほかの要素(入力ドック、サイドパネルのボタン、ステージのボタン)と重ならない。5つの画面サイズで確かめる。重なるときは、ステージの下に歯車の分の余白を取る。
-- ダイアログを開いている間も、ページはスクロールさせない。`Esc` と背景のクリックで閉じられる。開いたら、フォーカスをダイアログの中に移し、閉じたら歯車に戻す。
-- `connect` 画面はそのまま残す(ウィザードの一部として、同じコンポーネントを使う)。
+- Place a fixed gear button in the bottom-right corner (`Settings` icon, at least 44px, neobrutalist button, 16px margin). Available on every stage from `landing` to `result`. Hide it when `getConfig`'s `serverHasKey` is `true`.
+- Clicking opens the settings dialog (neobrutalism `Dialog`, add `src/components/ui/dialog.tsx`). Contents: API key (input, visibility toggle, "キーを消す", link to "キーの取得(Google AI Studio)", storage notice) and connection test (same checklist as `connect`). Closes with "閉じる". Shares the same `localStorage` key and components as `connect`.
+- The gear button must not overlap other UI elements (input dock, side panel buttons, stage buttons). Verify across all 5 viewport sizes; add bottom clearance below the stage if needed.
+- Page must remain non-scrollable while the dialog is open. Close on `Esc` or backdrop click. Move focus into the dialog on open, and return focus to the gear button on close.
+- Keep the `connect` screen as part of the wizard (reusing the same components).
 
-## スクロール
+## Scrolling
 
-- ページ全体はスクロールさせない。ルートの高さは `h-dvh`(動的ビューポート)、`overflow-hidden`。どの画面も、ビューポートの中に収まるように作る。確認する大きさは 360×640、390×844、768×1024、1280×800、1920×1080。
-- 高さが足りない端末(例: 高さ 700px 未満)では、装飾(大きなアイコン、余白、説明の2行目など)を縮める・隠す。`min-h` と `clamp()`、Tailwind の `max-h-*:` 系バリアント(例: `[@media(max-height:700px)]:hidden`)を使う。
-- スクロールが許されるのは、「会話を見返すための領域」だけ。`play` のチャットの一覧は、shadcn(neobrutalism)の `ScrollArea`(`src/components/ui/scroll-area.tsx`)に入れる。新しい吹き出しが増えたら、最下部へスクロールする(ユーザーが上へ戻って読んでいるときは、強制しない)。
-- `result` は、ページをスクロールさせずに収める。答えと質問数を上部のカードに置き、その下に `Tabs`(`src/components/ui/tabs.tsx`)で「質問の履歴」と「参考文献」を切り替える。各タブの中身は `ScrollArea` に入れる。
-- `ScrollArea` は、親に明示的な高さ(`flex-1 min-h-0` など)を与えて動かす。入力ドックは `ScrollArea` の外(画面の下)に置く。
-- 画面の切り替えのアニメーションの間も、ページにスクロールバーが出ないこと(`overflow-hidden`)。
+- No full-page scrolling. Root height is `h-dvh` with `overflow-hidden`. Every screen must fit within the viewport. Verify at 360×640, 390×844, 768×1024, 1280×800, and 1920×1080.
+- On short viewports (e.g., height < 700px), shrink or hide decorative elements (large icons, padding, second line of descriptions) using `min-h`, `clamp()`, and Tailwind `max-h-*` media variants (e.g., `[@media(max-height:700px)]:hidden`).
+- Scrolling is allowed only in areas for reviewing conversation/history. Put the `play` chat list inside shadcn (neobrutalism) `ScrollArea` (`src/components/ui/scroll-area.tsx`). Scroll to the bottom when a new bubble is added (do not force-scroll if the user scrolled up to read).
+- `result` must fit without page scrolling: place the answer and question count in a top card, and switch between "質問の履歴" and "参考文献" below using `Tabs` (`src/components/ui/tabs.tsx`), with each tab's body inside a `ScrollArea`.
+- `ScrollArea` requires an explicit parent height (e.g., `flex-1 min-h-0`). Keep the input dock outside `ScrollArea` (at the bottom of the screen).
+- Ensure no scrollbars appear during screen transition animations (`overflow-hidden`).
 
-## ロゴ
+## Logo
 
-- 宝石などの図形のモチーフは使わない。「じぇみねいたー」の文字だけで作る。
-- 文字は7文字。1文字ずつ、角の丸いステッカー状のタイル(太い黒枠 3px、硬い影 5px、`rounded-xl`)に入れる。フォントは M PLUS Rounded 1c の 900。大きさは `clamp(2.25rem, 7vw, 4.5rem)` を基準にする。
-- タイルの色は、黄、水色、ピンク、ミント、オレンジ、薄い紫、黄の順。傾きは -5, 3, -2, 4, -4, 2, -3 度。縦の位置も少しずつずらし(例: 0, -6, 4, -4, 6, -2, 3 px を大きさに応じて拡縮)、弾んで並んだ印象にする。「ぇ」のタイルは、ほかよりやや小さくする。
-- クイズらしさの飾りとして、小さな丸いステッカー「？」(ピンク)と「！」(黄)を、ロゴの左上と右上に、傾けて重ねる。文字の下に線や飾りは引かない(波線の下線は使わない)。
-- Google の Gemini のロゴ(4方向のとがった星)や、きらめき・宝石の図形には似せない。
-- `src/components/brand/Logo.tsx` に SVG / React コンポーネントとして作る(`lg` だけ。ほかの大きさは作らない)。`public/favicon.svg` は、黄色のタイルに「じ」を黒で入れた1文字のアイコンにする(文字は `<text>` ではなくパスにするか、フォントが無くても崩れない形にする)。ページのタイトルは「じぇみねいたー」。
+- Do not use gem or geometric motifs. Build the logo solely from the 7 characters of "じぇみねいたー".
+- Place each character in a rounded-corner sticker tile (3px thick black border, 5px hard shadow, `rounded-xl`). Font: M PLUS Rounded 1c 900. Base size: `clamp(2.25rem, 7vw, 4.5rem)`.
+- Tile colors in order: yellow, light blue, pink, mint, orange, light purple, yellow. Rotations: -5, 3, -2, 4, -4, 2, -3 degrees. Offset vertical positions slightly (e.g., 0, -6, 4, -4, 6, -2, 3 px scaled with size) for a bouncy look. Make the "ぇ" tile slightly smaller than the others.
+- As quiz-like accents, overlap small round stickers "?" (pink) and "!" (yellow) tilted at the top-left and top-right of the logo. Do not draw underlines or decorations beneath the letters (no wavy underline).
+- Do not resemble Google's Gemini logo (4-pointed star) or sparkle/gem shapes.
+- Implement as an SVG / React component in `src/components/brand/Logo.tsx` (`lg` size only; do not create other sizes). `public/favicon.svg` should be a single-character icon with a black "じ" on a yellow tile (use paths rather than `<text>` or ensure it does not break when fonts are missing). Page title: "じぇみねいたー".
 
-## レイアウトと配色
+## Layout & Palette
 
-- 全体の最大幅は 1200px。ステージ(ウィザードのカード)は最大 1040px。askjev より横長にする。余白は 16px(sm)〜 32px(lg)。
-- lg(1024px)以上: ステージを2カラム(左が見出し・アイコン、右が内容)。md(768px)は1カラムで、カードを広めに。sm 以下は1カラムで縦に積む。360px 幅で横スクロールが出ないこと。タップできる要素は 44px 以上。
-- 画面の上に、小さなステップの目印(丸いドット 5つ程度)を出してよい。ヘッダーではなく、ステージの一部として。
-- 配色(CSS 変数、`src/styles.css`): 背景はクリーム(水玉つき)、主役は黄(`#FFD84D` 付近)、差し色は水色(`#5CD9FF`)、ピンク(`#FF8AB8`)、ミント(`#7BE0A8`)、オレンジ(`#FF9F4A`)、薄い紫(`#B9A4FF`)。文字と枠は黒に近い色。はい系は緑、いいえ系は赤、わからないは灰色。
-- フォント: 本文と見出しは M PLUS Rounded 1c、数字と英字は Rubik(Google Fonts)。ダークモードは不要。
-- 見た目を大きく変えない。配色を極端に変えると見づらくなるため、上の値を保つ(ユーザーの判断。2026-11-22 に、ラベンダーとバイオレットの配色への刷新を取り消した)。
+- Overall max width: 1200px. Stage (wizard card) max width: 1040px (wider than askjev). Padding: 16px (`sm`) to 32px (`lg`).
+- `lg` (1024px) and above: 2-column stage (heading/icon on left, content on right). `md` (768px): 1 column with a wider card. `sm` and below: 1-column vertical stack. No horizontal overflow at 360px width. Tap targets at least 44px.
+- Small step indicator dots (~5 dots) may be shown above the screen as part of the stage, not as a header.
+- Palette (CSS variables in `src/styles.css`): cream background (with polka dots), primary yellow (`#FFD84D` area), accents light blue (`#5CD9FF`), pink (`#FF8AB8`), mint (`#7BE0A8`), orange (`#FF9F4A`), light purple (`#B9A4FF`). Near-black text and borders. Yes-family in green, No-family in red, Unknown in gray.
+- Fonts: M PLUS Rounded 1c for body and headings, Rubik for numbers and Latin characters (Google Fonts). No dark mode needed.
+- Do not drastically alter the visual look. Keep the values above so contrast and readability are preserved (user decision on 2026-11-22: reverted the lavender/violet palette overhaul).
 
-## アニメーション
+## Animations
 
-`motion`(`motion/react`)を使ってよい。使わない部分は CSS の keyframes で作る。長さは 150〜400ms、イージングは `cubic-bezier(0.22, 1, 0.36, 1)` を基準にする。アニメーションは `transform` と `opacity` だけを動かす。
+Use `motion` (`motion/react`), and CSS keyframes where `motion` is not used. Duration 150–400ms, base easing `cubic-bezier(0.22, 1, 0.36, 1)`. Animate only `transform` and `opacity`.
 
-- 画面の切り替え: 進むときは、古い画面が左へ 24px 動いて薄れ(180ms)、新しい画面が右から 32px で入る(スプリング、350ms 前後)。戻るときは向きを逆にする。`AnimatePresence mode="wait"`。
-- ランディング: ロゴのタイルが上から落ちて跳ねる(60ms ずつずらす)。そのあとは、タイルがゆっくり上下に浮く(3秒、ずらして繰り返す)。「？」と「！」のステッカーが、小さく揺れる(3秒周期)。遊び方のカードが下からフェードイン(ずらす)。矢印アイコンは、ホバーで右に 4px 動く。
-- `intro` と `handoff` のアイコンは動かさない(アニメーションなし)。
-- 接続テスト: 行が順に現れる。成功のチェックはポンと弾み(0 → 1.2 → 1)、失敗の × は左右に揺れる。
-- チャット: 吹き出しは、拡大(0.92 → 1)と下から 8px のフェードで入る。確率のバーは、左から伸びる(80ms ずつずらす、450ms)。質問数の数字は、変わるときに弾む。考え中のドットは、順に跳ねる。
-- 結果: 正解のときは、紙吹雪(DOM 要素 24個程度、CSS)を一度だけ散らす。答えのカードは、めくる動き(`rotateY`)で公開する。
-- `prefers-reduced-motion: reduce` のとき: ループするアニメーションと紙吹雪を止め、画面の切り替えは短いフェードだけにする。`MotionConfig reducedMotion="user"` と CSS のメディアクエリの両方で効かせる。
+- Screen transitions: when advancing, outgoing screen slides left 24px and fades (180ms), incoming screen enters from right 32px (spring, ~350ms). Reverse direction when going back. Use `AnimatePresence mode="wait"`.
+- Landing: logo tiles drop from above and bounce (60ms stagger), then gently float up and down (3s staggered loop). "?" and "!" stickers wobble slightly (3s cycle). How-to-play cards fade in from below (staggered). Arrow icon shifts right 4px on hover.
+- Do not animate icons on `intro` or `handoff`.
+- Connection test: rows appear in sequence. Success check pops (`0 → 1.2 → 1`); failure × shakes horizontally.
+- Chat: bubbles enter with scale (`0.92 → 1`) and 8px upward fade. Probability bars grow from the left (80ms stagger, 450ms). Question count number bounces when it changes. Thinking dots bounce sequentially.
+- Result: on `correct`, burst confetti once (~24 DOM elements, CSS). Answer card reveals with a flip (`rotateY`).
+- Under `prefers-reduced-motion: reduce`: stop looping animations and confetti, and reduce screen transitions to a short fade. Apply via both `MotionConfig reducedMotion="user"` and CSS media queries.
 
-## アクセシビリティ
+## Accessibility
 
-- 画面が変わったら、見出しにフォーカスを移す。
-- 接続テストの結果は `aria-live="polite"`。エラーは `role="alert"`。
-- フォームにはラベルを付ける。キーボードだけで最後まで操作できる。フォーカスの輪郭は太く(3px)見せる。
-- 色だけで意味を伝えない(確率のバーには文字の内訳、接続テストにはアイコンと文字)。
+- Move focus to the heading when the screen changes.
+- Connection test results use `aria-live="polite"`; errors use `role="alert"`.
+- Label all form controls. Full keyboard navigation from start to finish. Thick focus outlines (3px).
+- Never convey meaning by color alone (probability bars include text breakdowns; connection tests include icons and text).
