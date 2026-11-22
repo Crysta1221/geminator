@@ -1,4 +1,4 @@
-import { Flag, HelpCircle, Lightbulb } from "lucide-react";
+import { Flag, HelpCircle, Lightbulb, Maximize2, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 
 import { Button } from "#/components/ui/button";
@@ -10,6 +10,8 @@ type PlaySidebarProps = {
   isGuessOnly: boolean;
   isSubmitting: boolean;
   confirmGiveUp: boolean;
+  viewMode: "chat" | "maximized";
+  onChangeViewMode: (mode: "chat" | "maximized") => void;
   onRequestGiveUp: () => void;
   onCancelGiveUp: () => void;
   onConfirmGiveUp: () => void;
@@ -21,6 +23,8 @@ export function PlaySidebar({
   isGuessOnly,
   isSubmitting,
   confirmGiveUp,
+  viewMode,
+  onChangeViewMode,
   onRequestGiveUp,
   onCancelGiveUp,
   onConfirmGiveUp,
@@ -107,6 +111,37 @@ export function PlaySidebar({
               質問の回数に達しました。答えを入力してください
             </output>
           )}
+        </div>
+
+        <div className="neobrutal-box bg-secondary-background p-3">
+          <div role="group" aria-label="表示モード" className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "chat" ? "default" : "neutral"}
+              aria-pressed={viewMode === "chat"}
+              onClick={() => onChangeViewMode("chat")}
+              className={`min-h-10 cursor-pointer border-2 px-2 text-xs font-black ${
+                viewMode === "chat" ? "bg-accent-yellow" : "bg-secondary-background"
+              }`}
+            >
+              <MessageSquare className="size-3.5" aria-hidden="true" />
+              チャット表示
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "maximized" ? "default" : "neutral"}
+              aria-pressed={viewMode === "maximized"}
+              onClick={() => onChangeViewMode("maximized")}
+              className={`min-h-10 cursor-pointer border-2 px-2 text-xs font-black ${
+                viewMode === "maximized" ? "bg-accent-yellow" : "bg-secondary-background"
+              }`}
+            >
+              <Maximize2 className="size-3.5" aria-hidden="true" />
+              最大化表示
+            </Button>
+          </div>
         </div>
 
         <div className="neobrutal-box space-y-2.5 bg-secondary-background p-4">

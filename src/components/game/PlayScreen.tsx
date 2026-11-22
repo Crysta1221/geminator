@@ -1,9 +1,10 @@
-import { Flag } from "lucide-react";
+import { Flag, Maximize2, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ChatMessageList } from "#/components/game/ChatMessageList";
 import { PlayInputDock } from "#/components/game/PlayInputDock";
+import { PlayMaximizedView } from "#/components/game/PlayMaximizedView";
 import { PlaySidebar } from "#/components/game/PlaySidebar";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
@@ -48,6 +49,7 @@ export function PlayScreen({
 }: PlayScreenProps) {
   const headingRef = useFocusHeading<HTMLHeadingElement>();
   const [confirmGiveUp, setConfirmGiveUp] = useState(false);
+  const [viewMode, setViewMode] = useState<"chat" | "maximized">("chat");
   const scrollWrapRef = useRef<HTMLDivElement | null>(null);
   const stickToBottomRef = useRef(true);
   const ignoreScrollRef = useRef(false);
@@ -74,6 +76,7 @@ export function PlayScreen({
   }, []);
 
   useEffect(() => {
+    if (viewMode !== "chat") return;
     const root = scrollWrapRef.current;
     const viewport = root?.querySelector<HTMLElement>('[data-slot="scroll-area-viewport"]');
     const list = root?.querySelector<HTMLElement>('[data-slot="chat-message-list"]');
@@ -97,16 +100,17 @@ export function PlayScreen({
       resizeObserver.observe(list);
     }
 
-    // 初期表示（リロード復元など）でも最下部へ合わせる
+    // Also align to the bottom on initial render (e.g. after reload recovery)
     pinToBottom();
 
     return () => {
       viewport.removeEventListener("scroll", handleScroll);
       resizeObserver.disconnect();
     };
-  }, [pinToBottom]);
+  }, [pinToBottom, viewMode]);
 
   useEffect(() => {
+    if (viewMode !== "chat") return;
     if (isSubmitting) {
       stickToBottomRef.current = true;
     }
@@ -119,7 +123,7 @@ export function PlayScreen({
       pinToBottom();
     });
     return () => window.cancelAnimationFrame(raf1);
-  }, [history.length, isSubmitting, pendingEntry, errorCode, isGuessOnly, pinToBottom]);
+  }, [history.length, isSubmitting, pendingEntry, errorCode, isGuessOnly, pinToBottom, viewMode]);
 
   const handleSubmitText = (trimmed: string) => {
     return isGuessOnly ? onGuess(trimmed) : onChat(trimmed);
@@ -174,56 +178,81 @@ export function PlayScreen({
               )}
             </div>
 
-            {isGuessOnly ? (
+            <div className="flex items-center gap-2">
               <Button
                 type="button"
                 size="sm"
                 variant="neutral"
-                disabled={isSubmitting}
-                onClick={onGiveUp}
-                className="min-h-11 cursor-pointer border-2 bg-accent-pink/40 px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
+                aria-pressed={viewMode === "maximized"}
+                onClick={() => setViewMode((prev) => (prev === "chat" ? "maximized" : "chat"))}
+                className={`min-h-11 cursor-pointer border-2 px-2.5 text-xs font-black [@media(max-height:700px)]:min-h-9 ${
+                  viewMode === "maximized" ? "bg-accent-yellow" : "bg-secondary-background"
+                }`}
               >
-                <Flag className="size-3.5" aria-hidden="true" />
-                わからない
+                {viewMode === "maximized" ? (
+                  <>
+                    <MessageSquare className="size-3.5" aria-hidden="true" />
+                    チャット表示
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 className="size-3.5" aria-hidden="true" />
+                    最大化表示
+                  </>
+                )}
               </Button>
-            ) : !confirmGiveUp ? (
-              <Button
-                type="button"
-                size="sm"
-                variant="neutral"
-                disabled={isSubmitting}
-                onClick={() => setConfirmGiveUp(true)}
-                className="min-h-11 cursor-pointer border-2 px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
-              >
-                <Flag className="size-3.5" aria-hidden="true" />
-                ギブアップ
-              </Button>
-            ) : (
-              <div className="flex items-center gap-3.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={isSubmitting}
-                  onClick={() => {
-                    setConfirmGiveUp(false);
-                    onGiveUp();
-                  }}
-                  className="min-h-11 cursor-pointer border-2 bg-accent-pink px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
-                >
-                  答えを見る
-                </Button>
+
+              {isGuessOnly ? (
                 <Button
                   type="button"
                   size="sm"
                   variant="neutral"
                   disabled={isSubmitting}
-                  onClick={() => setConfirmGiveUp(false)}
+                  onClick={onGiveUp}
+                  className="min-h-11 cursor-pointer border-2 bg-accent-pink/40 px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
+                >
+                  <Flag className="size-3.5" aria-hidden="true" />
+                  わからない
+                </Button>
+              ) : !confirmGiveUp ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="neutral"
+                  disabled={isSubmitting}
+                  onClick={() => setConfirmGiveUp(true)}
                   className="min-h-11 cursor-pointer border-2 px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
                 >
-                  続ける
+                  <Flag className="size-3.5" aria-hidden="true" />
+                  ギブアップ
                 </Button>
-              </div>
-            )}
+              ) : (
+                <div className="flex items-center gap-3.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={isSubmitting}
+                    onClick={() => {
+                      setConfirmGiveUp(false);
+                      onGiveUp();
+                    }}
+                    className="min-h-11 cursor-pointer border-2 bg-accent-pink px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
+                  >
+                    答えを見る
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="neutral"
+                    disabled={isSubmitting}
+                    onClick={() => setConfirmGiveUp(false)}
+                    className="min-h-11 cursor-pointer border-2 px-3 text-xs font-black [@media(max-height:700px)]:min-h-9"
+                  >
+                    続ける
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
 
           {isGuessOnly && (
@@ -236,26 +265,44 @@ export function PlayScreen({
           )}
         </div>
 
-        <div ref={scrollWrapRef} className="min-h-0 flex-1">
-          <ScrollArea className="size-full">
-            <ChatMessageList
-              history={history}
-              pendingEntry={pendingEntry}
-              isSubmitting={isSubmitting}
-              errorCode={errorCode}
-              onDismissError={onDismissError}
-              onReset={onReset}
-            />
-          </ScrollArea>
-        </div>
+        {viewMode === "maximized" ? (
+          <PlayMaximizedView
+            history={history}
+            pendingEntry={pendingEntry}
+            isGuessOnly={isGuessOnly}
+            isSubmitting={isSubmitting}
+            apiKey={apiKey}
+            errorCode={errorCode}
+            onChat={onChat}
+            onGuess={onGuess}
+            onDismissError={onDismissError}
+            onReset={onReset}
+            onListeningChange={onListeningChange}
+          />
+        ) : (
+          <>
+            <div ref={scrollWrapRef} className="min-h-0 flex-1">
+              <ScrollArea className="size-full">
+                <ChatMessageList
+                  history={history}
+                  pendingEntry={pendingEntry}
+                  isSubmitting={isSubmitting}
+                  errorCode={errorCode}
+                  onDismissError={onDismissError}
+                  onReset={onReset}
+                />
+              </ScrollArea>
+            </div>
 
-        <PlayInputDock
-          isGuessOnly={isGuessOnly}
-          isSubmitting={isSubmitting}
-          apiKey={apiKey}
-          onSubmitText={handleSubmitText}
-          onListeningChange={onListeningChange}
-        />
+            <PlayInputDock
+              isGuessOnly={isGuessOnly}
+              isSubmitting={isSubmitting}
+              apiKey={apiKey}
+              onSubmitText={handleSubmitText}
+              onListeningChange={onListeningChange}
+            />
+          </>
+        )}
       </div>
 
       <PlaySidebar
@@ -264,6 +311,8 @@ export function PlayScreen({
         isGuessOnly={isGuessOnly}
         isSubmitting={isSubmitting}
         confirmGiveUp={confirmGiveUp}
+        viewMode={viewMode}
+        onChangeViewMode={setViewMode}
         onRequestGiveUp={() => setConfirmGiveUp(true)}
         onCancelGiveUp={() => setConfirmGiveUp(false)}
         onConfirmGiveUp={() => {
