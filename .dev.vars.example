@@ -2,3 +2,4 @@
 # GEMINI_API_KEY=
 # DECISIONS_MODEL=gemini-decision-1
 # TEXT_MODEL=gemini-3.5-flash-lite
+# DOMAINS=https://example.com

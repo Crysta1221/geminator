@@ -14,6 +14,10 @@ import {
   type generateTopicInput,
   type GuessResult,
   type guessInput,
+  type InspectChatResult,
+  type InspectDecisionSnapshot,
+  type InspectSearchStep,
+  type inspectChatInput,
   type ProbeResult,
   type Reference,
   type RegisterResult,
@@ -28,12 +32,22 @@ import {
 } from "#/lib/contract";
 
 import { type AI, createAI, type ProbeKind } from "./ai.server";
-import { getServerApiKey } from "./config.server";
 import {
+  getDecisionsModel,
+  getServerApiKey,
+  getSiteUrl,
+  getTextModel,
+  THRESHOLDS,
+} from "./config.server";
+import {
+  buildTopicInput,
   evaluateAskDecision,
   evaluateChatDecision,
   evaluateGuessDecision,
+  extractGuessCandidate,
   matchesGuessCandidate,
+  normalizeForMatch,
+  normalizeProbabilities,
 } from "./judge.server";
 
 const identifiedSchema = z.object({
@@ -89,8 +103,10 @@ function openReferenceBlob(blob: string): Reference {
 }
 
 export function handleConfig(): ConfigResult {
+  const siteUrl = getSiteUrl();
   return {
     serverHasKey: Boolean(getServerApiKey()),
+    ...(siteUrl ? { siteUrl } : {}),
   };
 }
 
@@ -212,6 +228,199 @@ export async function handleChat(data: z.output<typeof chatInput>): Promise<Chat
 
   const askResult = await resolveUnknownWithSearch(ai, topic, data.message, evaluated);
   return { kind: "ask", ...askResult };
+}
+
+export async function handleInspectChat(
+  data: z.output<typeof inspectChatInput>,
+): Promise<InspectChatResult> {
+  const totalStart = performance.now();
+  const topic = openTopicToken(data.token);
+  const models = {
+    decisions: getDecisionsModel(),
+    text: getTextModel(),
+  };
+
+  const candidates = [topic.answer, topic.identified.name, ...topic.identified.aliases];
+  const normalizedMessage = normalizeForMatch(data.message);
+  const extractedCandidate = extractGuessCandidate(data.message);
+  const matched = matchesGuessCandidate(data.message, candidates);
+
+  if (matched) {
+    return {
+      final: { kind: "guess", verdict: "correct" },
+      models,
+      totalMs: Math.max(0, Math.round(performance.now() - totalStart)),
+      stringMatch: {
+        normalizedMessage,
+        extractedCandidate,
+        matched: true,
+      },
+    };
+  }
+
+  const ai = createAI(data.apiKey);
+  const topicInput = buildTopicInput(topic);
+  const decisionsStart = performance.now();
+  const decision = await ai.judgeChat(topic, data.message);
+  const decisionsMs = Math.max(0, Math.round(performance.now() - decisionsStart));
+
+  const evaluated = evaluateChatDecision(decision);
+  const snapshot: InspectDecisionSnapshot = {
+    intent: {
+      choice: evaluated.kind === "guess" ? "guess" : "question",
+      probabilities: decision.intentProbabilities,
+    },
+    askable: {
+      score: decision.askableNoul,
+      threshold: THRESHOLDS.askableMin,
+      passed: decision.askableNoul >= THRESHOLDS.askableMin,
+    },
+    answer: {
+      choice: decision.answerChoice,
+      probabilities: normalizeProbabilities(decision.answerProbabilities),
+    },
+    guess: {
+      choice: decision.guessChoice,
+      confidence: decision.guessConfidence,
+      threshold: THRESHOLDS.guessSameConfidenceMin,
+      probabilities: decision.guessProbabilities,
+    },
+  };
+
+  if (evaluated.kind === "guess") {
+    return {
+      final: { kind: "guess", verdict: evaluated.verdict },
+      models,
+      totalMs: Math.max(0, Math.round(performance.now() - totalStart)),
+      stringMatch: {
+        normalizedMessage,
+        extractedCandidate,
+        matched: false,
+      },
+      decisions: {
+        durationMs: decisionsMs,
+        topicInput,
+        snapshot,
+      },
+    };
+  }
+
+  if (evaluated.verdict !== "unknown") {
+    return {
+      final: {
+        kind: "ask",
+        verdict: evaluated.verdict,
+        probabilities: evaluated.probabilities,
+        searched: false,
+      },
+      models,
+      totalMs: Math.max(0, Math.round(performance.now() - totalStart)),
+      stringMatch: {
+        normalizedMessage,
+        extractedCandidate,
+        matched: false,
+      },
+      decisions: {
+        durationMs: decisionsMs,
+        topicInput,
+        snapshot,
+      },
+    };
+  }
+
+  const provider = topic.useSearch ? "google_search" : "wikipedia";
+  const searchStart = performance.now();
+  let facts: Awaited<ReturnType<typeof ai.searchFacts>>;
+  try {
+    facts = topic.useSearch
+      ? await ai.searchFacts(topic, data.message)
+      : await ai.searchWikipediaFacts(topic, data.message);
+  } catch {
+    const searchStep: InspectSearchStep = {
+      provider,
+      succeeded: false,
+      durationMs: Math.max(0, Math.round(performance.now() - searchStart)),
+    };
+    return {
+      final: {
+        kind: "ask",
+        verdict: evaluated.verdict,
+        probabilities: evaluated.probabilities,
+        searched: false,
+      },
+      models,
+      totalMs: Math.max(0, Math.round(performance.now() - totalStart)),
+      stringMatch: {
+        normalizedMessage,
+        extractedCandidate,
+        matched: false,
+      },
+      decisions: {
+        durationMs: decisionsMs,
+        topicInput,
+        snapshot,
+      },
+      searchStep,
+    };
+  }
+
+  const searchDurationMs = Math.max(0, Math.round(performance.now() - searchStart));
+  const reference: Reference = {
+    question: data.message,
+    text: facts.text,
+    sources: facts.sources,
+    ...(facts.searchSuggestionsHtml ? { searchSuggestionsHtml: facts.searchSuggestionsHtml } : {}),
+    queries: facts.queries,
+  };
+  const referenceBlob = JSON.stringify(reference);
+
+  const rejudgeStart = performance.now();
+  const secondDecision = await ai.judgeQuestion(topic, data.message, facts.text);
+  const rejudgeDurationMs = Math.max(0, Math.round(performance.now() - rejudgeStart));
+  const rejudged = evaluateAskDecision(secondDecision);
+
+  const searchStep: InspectSearchStep = {
+    provider,
+    succeeded: true,
+    durationMs: searchDurationMs,
+    reference,
+    rejudged: {
+      askable: {
+        score: secondDecision.askableNoul,
+        threshold: THRESHOLDS.askableMin,
+        passed: secondDecision.askableNoul >= THRESHOLDS.askableMin,
+      },
+      answer: {
+        choice: secondDecision.answerChoice,
+        probabilities: normalizeProbabilities(secondDecision.answerProbabilities),
+      },
+      verdict: rejudged.verdict,
+      durationMs: rejudgeDurationMs,
+    },
+  };
+
+  return {
+    final: {
+      kind: "ask",
+      verdict: rejudged.verdict,
+      probabilities: rejudged.probabilities,
+      searched: true,
+      referenceBlob,
+    },
+    models,
+    totalMs: Math.max(0, Math.round(performance.now() - totalStart)),
+    stringMatch: {
+      normalizedMessage,
+      extractedCandidate,
+      matched: false,
+    },
+    decisions: {
+      durationMs: decisionsMs,
+      topicInput,
+      snapshot,
+    },
+    searchStep,
+  };
 }
 
 export async function handleReveal(data: z.output<typeof revealInput>): Promise<RevealResult> {

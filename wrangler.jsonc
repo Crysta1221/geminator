@@ -6,6 +6,7 @@
   "main": "@tanstack/react-start/server-entry",
   // Set secret values via `wrangler secret` (see README).
   // GEMINI_API_KEY : Optional. If set, hides the key input in the UI and all users share this key.
+  // DOMAINS        : Optional. Public origin(s) used for OGP and result share links (comma-separated; first is primary).
   "vars": {
     "DECISIONS_MODEL": "gemini-decision-1",
     "TEXT_MODEL": "gemini-3.5-flash-lite",

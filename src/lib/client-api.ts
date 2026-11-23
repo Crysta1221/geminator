@@ -4,6 +4,7 @@ import type {
   ConfigResult,
   GenerateTopicResult,
   GuessResult,
+  InspectChatResult,
   RegisterResult,
   RevealResult,
   TestConnectionResult,
@@ -14,6 +15,7 @@ import {
   generateTopic,
   getConfig,
   guessAnswer,
+  inspectChat,
   registerTopic,
   revealAnswer,
   sendChat,
@@ -108,6 +110,20 @@ export function submitChat(params: {
   apiKey?: string;
 }): Promise<ChatResult> {
   return sendChat({
+    data: {
+      token: params.token,
+      message: params.message.trim(),
+      apiKey: normalizeApiKey(params.apiKey),
+    },
+  });
+}
+
+export function submitInspectChat(params: {
+  token: string;
+  message: string;
+  apiKey?: string;
+}): Promise<InspectChatResult> {
+  return inspectChat({
     data: {
       token: params.token,
       message: params.message.trim(),

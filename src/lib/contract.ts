@@ -86,6 +86,9 @@ export const chatInput = z.object({
 });
 export type ChatInput = z.input<typeof chatInput>;
 
+export const inspectChatInput = chatInput;
+export type InspectChatInput = ChatInput;
+
 export const revealInput = z.object({
   token,
   /** `referenceBlob` values returned by `ask`, ordered by question. */
@@ -117,6 +120,8 @@ export type TranscribeInput = z.input<typeof transcribeInput>;
 export type ConfigResult = {
   /** True when `GEMINI_API_KEY` is configured on the server; hides the UI key input when true. */
   serverHasKey: boolean;
+  /** Primary public site URL configured via `DOMAINS` (without trailing slash). */
+  siteUrl?: string;
 };
 
 export type Identified = {
@@ -189,4 +194,66 @@ export type TestConnectionResult = {
 
 export type TranscribeResult = {
   text: string;
+};
+
+export type InspectDecisionSnapshot = {
+  intent: {
+    choice: "question" | "guess";
+    probabilities: { question: number; guess: number };
+  };
+  askable: {
+    score: number;
+    threshold: number;
+    passed: boolean;
+  };
+  answer: {
+    choice: Verdict;
+    probabilities: Probabilities;
+  };
+  guess: {
+    choice: "same" | "close" | "different";
+    confidence: number;
+    threshold: number;
+    probabilities: { same: number; close: number; different: number };
+  };
+};
+
+export type InspectSearchStep = {
+  provider: "google_search" | "wikipedia";
+  succeeded: boolean;
+  durationMs: number;
+  reference?: Reference;
+  rejudged?: {
+    askable: {
+      score: number;
+      threshold: number;
+      passed: boolean;
+    };
+    answer: {
+      choice: Verdict;
+      probabilities: Probabilities;
+    };
+    verdict: AskVerdict;
+    durationMs: number;
+  };
+};
+
+export type InspectChatResult = {
+  final: ChatResult;
+  models: {
+    decisions: string;
+    text: string;
+  };
+  totalMs: number;
+  stringMatch: {
+    normalizedMessage: string;
+    extractedCandidate: string;
+    matched: boolean;
+  };
+  decisions?: {
+    durationMs: number;
+    topicInput: string;
+    snapshot: InspectDecisionSnapshot;
+  };
+  searchStep?: InspectSearchStep;
 };

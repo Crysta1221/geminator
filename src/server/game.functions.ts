@@ -9,6 +9,7 @@ import {
   chatInput,
   generateTopicInput,
   guessInput,
+  inspectChatInput,
   registerInput,
   revealInput,
   testConnectionInput,
@@ -21,6 +22,7 @@ import {
   handleConfig,
   handleGenerateTopic,
   handleGuess,
+  handleInspectChat,
   handleRegister,
   handleReveal,
   handleTestConnection,
@@ -48,6 +50,10 @@ export const guessAnswer = createServerFn({ method: "POST" })
 export const sendChat = createServerFn({ method: "POST" })
   .validator(chatInput)
   .handler(({ data }) => handleChat(data));
+
+export const inspectChat = createServerFn({ method: "POST" })
+  .validator(inspectChatInput)
+  .handler(({ data }) => handleInspectChat(data));
 
 export const revealAnswer = createServerFn({ method: "POST" })
   .validator(revealInput)

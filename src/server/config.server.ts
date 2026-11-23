@@ -48,3 +48,22 @@ export function getDecisionsModel(): string {
 export function getTextModel(): string {
   return readEnv("TEXT_MODEL") ?? DEFAULT_TEXT_MODEL;
 }
+
+/**
+ * Parse the primary public site origin from a `DOMAINS` env value.
+ * Supports comma-separated domains, bare hostnames, and trailing slashes.
+ */
+export function parsePrimaryDomain(raw: string | undefined): string | undefined {
+  if (!raw) return undefined;
+  const first = raw
+    .split(",")
+    .map((part) => part.trim())
+    .find((part) => part.length > 0);
+  if (!first) return undefined;
+  const withProtocol = /^https?:\/\//i.test(first) ? first : `https://${first}`;
+  return withProtocol.replace(/\/+$/, "");
+}
+
+export function getSiteUrl(): string | undefined {
+  return parsePrimaryDomain(readEnv("DOMAINS"));
+}
