@@ -1,12 +1,15 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
 
+import { buildShareText, extractGenreFromNote } from "#/lib/share";
 import { type AI, setAIFactoryForTest } from "#/server/ai.server";
+import { parsePrimaryDomain } from "#/server/config.server";
 import {
   handleAsk,
   handleChat,
   handleConfig,
   handleGenerateTopic,
   handleGuess,
+  handleInspectChat,
   handleRegister,
   handleReveal,
   handleTranscribe,
@@ -14,6 +17,7 @@ import {
 
 const ORIGINAL_ENV = {
   GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+  DOMAINS: process.env.DOMAINS,
 };
 
 function restoreEnv() {
@@ -28,6 +32,7 @@ function restoreEnv() {
 
 beforeEach(() => {
   delete process.env.GEMINI_API_KEY;
+  delete process.env.DOMAINS;
   setAIFactoryForTest(null);
 });
 
@@ -125,6 +130,24 @@ describe("config & API キーの扱い", () => {
 
     process.env.GEMINI_API_KEY = "dummy-server-key";
     expect(handleConfig()).toEqual({ serverHasKey: true });
+
+    process.env.DOMAINS = "https://geminator.crystaworld.dev/, https://sub.example.com";
+    expect(handleConfig()).toEqual({
+      serverHasKey: true,
+      siteUrl: "https://geminator.crystaworld.dev",
+    });
+  });
+
+  test("parsePrimaryDomain はプロトコル補完・末尾スラッシュ除去・カンマ区切りを処理する", () => {
+    expect(parsePrimaryDomain(undefined)).toBeUndefined();
+    expect(parsePrimaryDomain("   ")).toBeUndefined();
+    expect(parsePrimaryDomain("geminator.crystaworld.dev/")).toBe(
+      "https://geminator.crystaworld.dev",
+    );
+    expect(parsePrimaryDomain("http://localhost:3000/")).toBe("http://localhost:3000");
+    expect(parsePrimaryDomain(" , https://a.example.com/ , https://b.example.com")).toBe(
+      "https://a.example.com",
+    );
   });
 
   test("API キーがリクエストにも環境変数にもないとき missing_api_key", async () => {
@@ -855,5 +878,173 @@ describe("handleGenerateTopic のジャンル自動出題", () => {
     await expect(
       handleGenerateTopic({ genre: "動物", useSearch: false, excludeNames: [] }),
     ).rejects.toThrow("missing_api_key");
+  });
+});
+
+describe("handleInspectChat の仕組み可視化トレース", () => {
+  test("文字列一致ショートカット時は Decisions を呼ばずに stringMatch.matched=true を返す", async () => {
+    let judgeChatCalls = 0;
+    setAIFactoryForTest(() =>
+      createStubAI({
+        async judgeChat() {
+          judgeChatCalls++;
+          throw new Error("should_not_be_called");
+        },
+      }),
+    );
+
+    const reg = await handleRegister({
+      answer: "ピカチュウ",
+      notes: "",
+      useSearch: false,
+    });
+
+    const res = await handleInspectChat({ token: reg.token, message: "ピカチュウですね" });
+    expect(judgeChatCalls).toBe(0);
+    expect(res.final).toEqual({ kind: "guess", verdict: "correct" });
+    expect(res.stringMatch.matched).toBe(true);
+    expect(res.stringMatch.extractedCandidate).toBe("ピカチュウ");
+    expect(res.decisions).toBeUndefined();
+    expect(res.searchStep).toBeUndefined();
+  });
+
+  test("通常質問では4分類器の全スコアと topicInput を返す", async () => {
+    setAIFactoryForTest(() => createStubAI());
+
+    const reg = await handleRegister({
+      answer: "ピカチュウ",
+      notes: "電気タイプ",
+      useSearch: false,
+    });
+
+    const res = await handleInspectChat({ token: reg.token, message: "生き物ですか？" });
+    expect(res.stringMatch.matched).toBe(false);
+    expect(res.final.kind).toBe("ask");
+    expect(res.decisions).toBeDefined();
+    expect(res.decisions?.topicInput).toContain("正式名称: ピカチュウ");
+    expect(res.decisions?.snapshot.intent.choice).toBe("question");
+    expect(res.decisions?.snapshot.askable.passed).toBe(true);
+    expect(res.decisions?.snapshot.answer.choice).toBe("yes");
+    expect(res.decisions?.snapshot.guess.choice).toBe("different");
+    expect(res.searchStep).toBeUndefined();
+  });
+
+  test("unknown 判定時に Wikipedia 検索と再判定ステップのトレースを返す", async () => {
+    setAIFactoryForTest(() =>
+      createStubAI({
+        async judgeChat() {
+          return {
+            intentChoice: "question",
+            intentProbabilities: { question: 0.94, guess: 0.06 },
+            askableNoul: 0.91,
+            answerChoice: "unknown",
+            answerConfidence: 0.72,
+            answerProbabilities: {
+              yes: 0.1,
+              partially_yes: 0.08,
+              partially_no: 0.05,
+              no: 0.05,
+              unknown: 0.72,
+            },
+            guessChoice: "different",
+            guessConfidence: 0.9,
+            guessProbabilities: { same: 0.02, close: 0.08, different: 0.9 },
+          };
+        },
+        async searchWikipediaFacts() {
+          return {
+            text: "ピカチュウの身長は0.4mである。",
+            sources: [
+              { title: "ピカチュウ - Wikipedia", uri: "https://ja.wikipedia.org/wiki/ピカチュウ" },
+            ],
+            queries: ["ピカチュウ"],
+          };
+        },
+        async judgeQuestion() {
+          return {
+            askableNoul: 0.95,
+            answerChoice: "no",
+            answerConfidence: 0.91,
+            answerProbabilities: {
+              yes: 0.02,
+              partially_yes: 0.02,
+              partially_no: 0.03,
+              no: 0.91,
+              unknown: 0.02,
+            },
+          };
+        },
+      }),
+    );
+
+    const reg = await handleRegister({
+      answer: "ピカチュウ",
+      notes: "",
+      useSearch: false,
+    });
+
+    const res = await handleInspectChat({ token: reg.token, message: "身長は1m以上ですか？" });
+    expect(res.final.kind).toBe("ask");
+    if (res.final.kind === "ask") {
+      expect(res.final.verdict).toBe("no");
+      expect(res.final.searched).toBe(true);
+    }
+    expect(res.decisions?.snapshot.answer.choice).toBe("unknown");
+    expect(res.searchStep?.provider).toBe("wikipedia");
+    expect(res.searchStep?.succeeded).toBe(true);
+    expect(res.searchStep?.reference?.text).toBe("ピカチュウの身長は0.4mである。");
+    expect(res.searchStep?.rejudged?.verdict).toBe("no");
+  });
+});
+
+describe("シェア文面生成とジャンル抽出", () => {
+  test("ジャンルノートからジャンル名を抽出する", () => {
+    expect(extractGenreFromNote("ジャンル: 動物")).toBe("動物");
+    expect(extractGenreFromNote("ジャンル：ジブリ映画")).toBe("ジブリ映画");
+    expect(extractGenreFromNote("春に咲く花")).toBeUndefined();
+  });
+
+  test("正解時と不正解時のシェア文面を生成し、#じぇみねいたー と siteUrl を含める", () => {
+    expect(
+      buildShareText({
+        outcome: "correct",
+        questionCount: 5,
+        questionLimit: null,
+        genre: "動物",
+        answerName: "カモノハシ",
+        includeAnswer: false,
+        siteUrl: "https://geminator.crystaworld.dev",
+      }),
+    ).toBe(
+      "ジャンル「動物」のお題を 5問で正解しました！🎉\n#じぇみねいたー\nhttps://geminator.crystaworld.dev",
+    );
+
+    expect(
+      buildShareText({
+        outcome: "gave_up",
+        questionCount: 13,
+        questionLimit: null,
+        genre: "動物",
+        answerName: "カモノハシ",
+        includeAnswer: false,
+        siteUrl: "https://geminator.crystaworld.dev",
+      }),
+    ).toBe(
+      "ジャンル「動物」のお題は 13問で不正解（ギブアップ）でした…！\n#じぇみねいたー\nhttps://geminator.crystaworld.dev",
+    );
+
+    expect(
+      buildShareText({
+        outcome: "correct",
+        questionCount: 4,
+        questionLimit: 10,
+        genre: "動物",
+        answerName: "カモノハシ",
+        includeAnswer: true,
+        siteUrl: "https://geminator.crystaworld.dev",
+      }),
+    ).toBe(
+      "ジャンル「動物」のお題「カモノハシ」を 4/10問で正解しました！🎉\n#じぇみねいたー\nhttps://geminator.crystaworld.dev",
+    );
   });
 });
