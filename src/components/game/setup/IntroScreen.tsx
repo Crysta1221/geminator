@@ -1,8 +1,8 @@
 import { ArrowLeft, ArrowRight, EyeOff } from "lucide-react";
 
-import { WizardShell } from "#/components/game/WizardShell";
+import { WizardShell } from "#/components/game/shared/WizardShell";
 import { Button } from "#/components/ui/button";
-import { useFocusHeading } from "#/lib/use-focus-heading";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 
 type IntroScreenProps = {
   onBack: () => void;

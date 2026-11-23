@@ -1,6 +1,6 @@
 import { Search } from "lucide-react";
 
-import { type LimitMode, QuestionLimitField } from "#/components/game/QuestionLimitField";
+import { type LimitMode, QuestionLimitField } from "#/components/game/setup/QuestionLimitField";
 import { Label } from "#/components/ui/label";
 import { Switch } from "#/components/ui/switch";
 

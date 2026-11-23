@@ -5,16 +5,16 @@ import {
   inferLimitMode,
   type LimitMode,
   resolveQuestionLimit,
-} from "#/components/game/QuestionLimitField";
-import { TopicOptionsFieldset } from "#/components/game/TopicOptionsFieldset";
-import { WizardShell } from "#/components/game/WizardShell";
+} from "#/components/game/setup/QuestionLimitField";
+import { TopicOptionsFieldset } from "#/components/game/setup/TopicOptionsFieldset";
+import { WizardShell } from "#/components/game/shared/WizardShell";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { Textarea } from "#/components/ui/textarea";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { DraftSetup } from "#/lib/client-types";
 import { LIMITS } from "#/lib/contract";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 type TopicScreenProps = {
   initialDraft: DraftSetup;

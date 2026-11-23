@@ -9,6 +9,7 @@ import {
   submitTopic,
 } from "#/lib/client-api";
 import {
+  type ActiveSessionConfig,
   type ConnectionCheckState,
   countValidQuestions,
   type DraftSetup,
@@ -47,6 +48,13 @@ const EMPTY_DRAFT: DraftSetup = {
   questionLimit: null,
 };
 
+const EMPTY_SESSION_CONFIG: ActiveSessionConfig = {
+  mode: "custom",
+  genre: "",
+  useSearch: false,
+  questionLimit: null,
+};
+
 const SERVER_KEY_SIGNATURE = "__server__";
 
 function createEntryId(): string {
@@ -74,6 +82,7 @@ export function useAkinatorGame(config: ConfigResult) {
   const [outcome, setOutcome] = useState<GameOutcome>("gave_up");
   const [reveal, setReveal] = useState<RevealResult | null>(null);
   const [draftSetup, setDraftSetup] = useState<DraftSetup>(EMPTY_DRAFT);
+  const [sessionConfig, setSessionConfig] = useState<ActiveSessionConfig>(EMPTY_SESSION_CONFIG);
   const [connection, setConnection] = useState<ConnectionCheckState>(INITIAL_CONNECTION_STATE);
   const [apiKey, setApiKey] = useState("");
   const [bgmSettings, setBgmSettings] = useState<BgmSettings>(DEFAULT_BGM_SETTINGS);
@@ -132,13 +141,21 @@ export function useAkinatorGame(config: ConfigResult) {
     const saved = loadSession();
     if (saved) {
       const limit = saved.questionLimit ?? null;
-      setPhase(saved.phase);
+      const savedGenre = saved.genre ?? "";
+      const restoredPhase = saved.phase === "genre_announce" && !savedGenre ? "play" : saved.phase;
+      setPhase(restoredPhase);
       setToken(saved.token);
       setHistory(saved.history);
       setReferenceBlobs(saved.referenceBlobs);
       setQuestionLimit(limit);
       setOutcome(saved.outcome ?? "gave_up");
-      if (saved.phase === "result") {
+      setSessionConfig({
+        mode: saved.mode ?? (savedGenre ? "genre" : "custom"),
+        genre: savedGenre,
+        useSearch: saved.useSearch ?? false,
+        questionLimit: limit,
+      });
+      if (restoredPhase === "result") {
         void loadRevealData(saved.token, saved.referenceBlobs);
       }
     }
@@ -147,7 +164,13 @@ export function useAkinatorGame(config: ConfigResult) {
 
   useEffect(() => {
     if (!hydratedRef.current) return;
-    if ((phase === "handoff" || phase === "play" || phase === "result") && token) {
+    if (
+      (phase === "handoff" ||
+        phase === "genre_announce" ||
+        phase === "play" ||
+        phase === "result") &&
+      token
+    ) {
       saveSession({
         phase,
         token,
@@ -155,11 +178,14 @@ export function useAkinatorGame(config: ConfigResult) {
         referenceBlobs,
         questionLimit,
         outcome: phase === "result" ? outcome : undefined,
+        mode: sessionConfig.mode,
+        genre: sessionConfig.genre || undefined,
+        useSearch: sessionConfig.useSearch,
       });
-    } else if (phase === "landing" || phase === "mode") {
+    } else if (phase === "landing" || phase === "mode" || phase === "inspect") {
       clearSession();
     }
-  }, [phase, token, history, referenceBlobs, questionLimit, outcome]);
+  }, [phase, token, history, referenceBlobs, questionLimit, outcome, sessionConfig]);
 
   const activeApiKey = config.serverHasKey ? undefined : apiKey;
   const keySignature = config.serverHasKey ? SERVER_KEY_SIGNATURE : apiKey.trim();
@@ -273,14 +299,21 @@ export function useAkinatorGame(config: ConfigResult) {
               apiKey: activeApiKey,
             });
         // Clear plaintext topic, notes, and genre input from memory before starting
+        const confirmedGenre = isGenre ? draft.genre.trim() : "";
         setDraftSetup(EMPTY_DRAFT);
+        setSessionConfig({
+          mode: draft.mode,
+          genre: confirmedGenre,
+          useSearch: nextUseSearch,
+          questionLimit: confirmedLimit,
+        });
         setToken(res.token);
         setQuestionLimit(confirmedLimit);
         setHistory([]);
         setReferenceBlobs([]);
         setReveal(null);
         setErrorCode(null);
-        navigate(isGenre ? "play" : "handoff", 1);
+        navigate(isGenre ? "genre_announce" : "handoff", 1);
       } catch (err) {
         const code = toErrorCode(err);
         setErrorCode(code);
@@ -347,9 +380,50 @@ export function useAkinatorGame(config: ConfigResult) {
     setOutcome("gave_up");
     setReveal(null);
     setDraftSetup(EMPTY_DRAFT);
+    setSessionConfig(EMPTY_SESSION_CONFIG);
     setErrorCode(null);
     navigate("mode", -1);
   }, [navigate]);
+
+  const handleReplaySameMode = useCallback(() => {
+    testReqIdRef.current += 1;
+    clearSession();
+    setToken("");
+    setHistory([]);
+    setPendingEntry(null);
+    setReferenceBlobs([]);
+    setOutcome("gave_up");
+    setReveal(null);
+    setErrorCode(null);
+
+    if (sessionConfig.mode === "genre") {
+      const nextDraft: DraftSetup = {
+        mode: "genre",
+        answer: "",
+        notes: "",
+        genre: sessionConfig.genre.trim(),
+        useSearch: sessionConfig.useSearch,
+        questionLimit: sessionConfig.questionLimit,
+      };
+      setDraftSetup(nextDraft);
+      if (nextDraft.genre.length > 0) {
+        void startRegisterWithDraft(nextDraft);
+        return;
+      }
+      navigate("genre", 1);
+      return;
+    }
+
+    setDraftSetup({
+      mode: "custom",
+      answer: "",
+      notes: "",
+      genre: "",
+      useSearch: sessionConfig.useSearch,
+      questionLimit: sessionConfig.questionLimit,
+    });
+    navigate("intro", 1);
+  }, [navigate, sessionConfig, startRegisterWithDraft]);
 
   const handleGuess = useCallback(
     async (guess: string): Promise<boolean> => {
@@ -470,6 +544,7 @@ export function useAkinatorGame(config: ConfigResult) {
     outcome,
     reveal,
     draftSetup,
+    sessionConfig,
     connection,
     apiKey,
     activeApiKey,
@@ -479,6 +554,10 @@ export function useAkinatorGame(config: ConfigResult) {
     isLoadingReveal,
     dismissError: () => setErrorCode(null),
     goToMode: () => navigate("mode", 1),
+    goToInspect: () => {
+      setErrorCode(null);
+      navigate("inspect", 1);
+    },
     backToLanding: () => navigate("landing", -1),
     handleSelectMode,
     backToMode: () => navigate("mode", -1),
@@ -495,6 +574,7 @@ export function useAkinatorGame(config: ConfigResult) {
     startPlay: () => navigate("play", 1),
     retryReveal: () => void loadRevealData(token, referenceBlobs),
     handleRestart,
+    handleReplaySameMode,
     handleChat,
     handleGuess,
     handleGiveUp,

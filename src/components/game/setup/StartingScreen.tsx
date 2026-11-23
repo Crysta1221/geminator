@@ -1,7 +1,7 @@
 import { LOGO_TILES } from "#/components/brand/Logo";
-import { CUSTOM_STEPS, GENRE_STEPS, WizardShell } from "#/components/game/WizardShell";
+import { CUSTOM_STEPS, GENRE_STEPS, WizardShell } from "#/components/game/shared/WizardShell";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { TopicMode } from "#/lib/client-types";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 type StartingScreenProps = {
   topicMode: TopicMode;

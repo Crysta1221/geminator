@@ -1,9 +1,9 @@
 import { ArrowLeft, ArrowRight, Dices, PenLine } from "lucide-react";
 
-import { MODE_SELECT_STEPS, WizardShell } from "#/components/game/WizardShell";
+import { MODE_SELECT_STEPS, WizardShell } from "#/components/game/shared/WizardShell";
 import { Button } from "#/components/ui/button";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { TopicMode } from "#/lib/client-types";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 type ModeScreenProps = {
   selectedMode: TopicMode;

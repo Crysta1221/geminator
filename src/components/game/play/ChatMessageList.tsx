@@ -1,8 +1,8 @@
 import { Search } from "lucide-react";
 import { motion } from "motion/react";
 
-import { ErrorBanner } from "#/components/game/ErrorBanner";
-import { ProbabilityBar } from "#/components/game/ProbabilityBar";
+import { ErrorBanner } from "#/components/game/shared/ErrorBanner";
+import { ProbabilityBar } from "#/components/game/shared/ProbabilityBar";
 import {
   ASK_VERDICT_LABELS,
   GUESS_VERDICT_LABELS,

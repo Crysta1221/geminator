@@ -2,15 +2,15 @@ import { Flag, Maximize2, MessageSquare } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { ChatMessageList } from "#/components/game/ChatMessageList";
-import { PlayInputDock } from "#/components/game/PlayInputDock";
-import { PlayMaximizedView } from "#/components/game/PlayMaximizedView";
-import { PlaySidebar } from "#/components/game/PlaySidebar";
+import { ChatMessageList } from "#/components/game/play/ChatMessageList";
+import { PlayInputDock } from "#/components/game/play/PlayInputDock";
+import { PlayMaximizedView } from "#/components/game/play/PlayMaximizedView";
+import { PlaySidebar } from "#/components/game/play/PlaySidebar";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { HistoryEntry, PendingHistoryEntry } from "#/lib/client-types";
 import type { ErrorCode } from "#/lib/contract";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 const STICK_THRESHOLD_PX = 80;
 
@@ -19,6 +19,7 @@ type PlayScreenProps = {
   pendingEntry: PendingHistoryEntry | null;
   questionCount: number;
   questionLimit: number | null;
+  genre?: string;
   isGuessOnly: boolean;
   isSubmitting: boolean;
   apiKey?: string;
@@ -36,6 +37,7 @@ export function PlayScreen({
   pendingEntry,
   questionCount,
   questionLimit,
+  genre,
   isGuessOnly,
   isSubmitting,
   apiKey,
@@ -162,6 +164,14 @@ export function PlayScreen({
                   </>
                 )}
               </motion.span>
+              {genre && (
+                <span
+                  title={`ジャンル：${genre}`}
+                  className="max-w-[140px] truncate rounded-full border-2 border-border bg-accent-yellow px-2.5 py-0.5 text-[11px] font-black shadow-[2px_2px_0_#141414]"
+                >
+                  ジャンル「{genre}」
+                </span>
+              )}
               {questionLimit !== null && (
                 <div
                   aria-hidden="true"
@@ -308,6 +318,7 @@ export function PlayScreen({
       <PlaySidebar
         questionCount={questionCount}
         questionLimit={questionLimit}
+        genre={genre}
         isGuessOnly={isGuessOnly}
         isSubmitting={isSubmitting}
         confirmGiveUp={confirmGiveUp}

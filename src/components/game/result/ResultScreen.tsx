@@ -1,21 +1,41 @@
-import { RefreshCw, RotateCcw, Search, Trophy } from "lucide-react";
+import { RefreshCw, RotateCcw, Search, Share2, Trophy } from "lucide-react";
 import { motion } from "motion/react";
+import { useState } from "react";
 
-import { ConfettiBurst } from "#/components/game/ConfettiBurst";
-import { ErrorBanner } from "#/components/game/ErrorBanner";
-import { ProbabilityBar } from "#/components/game/ProbabilityBar";
-import { ReferenceDetails, ReferenceList } from "#/components/game/ReferenceList";
+import { ConfettiBurst } from "#/components/game/result/ConfettiBurst";
+import { ReferenceDetails, ReferenceList } from "#/components/game/result/ReferenceList";
+import { ReplayDialog } from "#/components/game/result/ReplayDialog";
+import { ShareDialog } from "#/components/game/result/ShareDialog";
+import { ErrorBanner } from "#/components/game/shared/ErrorBanner";
+import { ProbabilityBar } from "#/components/game/shared/ProbabilityBar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import {
+  type ActiveSessionConfig,
   ASK_VERDICT_LABELS,
   type GameOutcome,
   GUESS_VERDICT_LABELS,
   type HistoryEntry,
 } from "#/lib/client-types";
 import type { ErrorCode, RevealResult } from "#/lib/contract";
-import { useFocusHeading } from "#/lib/use-focus-heading";
+import { extractGenreFromNote } from "#/lib/share";
+
+function formatRevealNote(notes: string): string {
+  const genre = extractGenreFromNote(notes);
+  if (genre) {
+    return `ジャンル：${genre}`;
+  }
+  return `補足：${notes}`;
+}
+
+const DEFAULT_SESSION_CONFIG: ActiveSessionConfig = {
+  mode: "custom",
+  genre: "",
+  useSearch: false,
+  questionLimit: null,
+};
 
 type ResultScreenProps = {
   outcome: GameOutcome;
@@ -25,8 +45,11 @@ type ResultScreenProps = {
   reveal: RevealResult | null;
   isLoadingReveal: boolean;
   errorCode: ErrorCode | null;
+  sessionConfig?: ActiveSessionConfig;
+  siteUrl?: string;
   onDismissError: () => void;
   onRetryReveal: () => void;
+  onReplaySameMode?: () => void;
   onRestart: () => void;
 };
 
@@ -38,13 +61,21 @@ export function ResultScreen({
   reveal,
   isLoadingReveal,
   errorCode,
+  sessionConfig = DEFAULT_SESSION_CONFIG,
+  siteUrl,
   onDismissError,
   onRetryReveal,
+  onReplaySameMode,
   onRestart,
 }: ResultScreenProps) {
   const headingRef = useFocusHeading<HTMLHeadingElement>();
+  const [replayDialogOpen, setReplayDialogOpen] = useState(false);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
   const isCorrect = outcome === "correct";
   const references = reveal?.references ?? [];
+  const activeGenre =
+    (sessionConfig.mode === "genre" ? sessionConfig.genre.trim() : "") ||
+    extractGenreFromNote(reveal?.notes);
 
   const usedRefIndices = new Set<number>();
   let refCursor = 0;
@@ -128,7 +159,7 @@ export function ResultScreen({
                 </div>
                 {reveal.notes && (
                   <p className="m-0 mt-1 line-clamp-2 text-xs font-bold text-foreground/85 sm:text-sm [@media(max-height:700px)]:line-clamp-1">
-                    補足：{reveal.notes}
+                    {formatRevealNote(reveal.notes)}
                   </p>
                 )}
               </motion.div>
@@ -145,18 +176,49 @@ export function ResultScreen({
             )}
           </div>
 
-          <Button
-            type="button"
-            size="lg"
-            variant="neutral"
-            onClick={onRestart}
-            className="min-h-11 shrink-0 cursor-pointer border-[3px] bg-secondary-background px-5 text-sm font-black sm:text-base"
-          >
-            <RotateCcw className="size-4" aria-hidden="true" />
-            もう一度遊ぶ
-          </Button>
+          <div className="flex shrink-0 flex-col gap-2">
+            <Button
+              type="button"
+              size="lg"
+              variant="neutral"
+              onClick={() => setReplayDialogOpen(true)}
+              className="min-h-11 w-full cursor-pointer border-[3px] bg-secondary-background px-5 text-sm font-black sm:text-base [@media(max-height:700px)]:min-h-10"
+            >
+              <RotateCcw className="size-4" aria-hidden="true" />
+              もう一度遊ぶ
+            </Button>
+            <Button
+              type="button"
+              size="lg"
+              variant="neutral"
+              onClick={() => setShareDialogOpen(true)}
+              className="min-h-10 w-full cursor-pointer border-[3px] bg-accent-cyan px-5 text-sm font-black sm:text-base [@media(max-height:700px)]:min-h-9"
+            >
+              <Share2 className="size-4" aria-hidden="true" />
+              シェア
+            </Button>
+          </div>
         </div>
       </div>
+
+      <ReplayDialog
+        open={replayDialogOpen}
+        onOpenChange={setReplayDialogOpen}
+        sessionConfig={sessionConfig}
+        onReplaySameMode={onReplaySameMode ?? onRestart}
+        onSwitchMode={onRestart}
+      />
+
+      <ShareDialog
+        open={shareDialogOpen}
+        onOpenChange={setShareDialogOpen}
+        outcome={outcome}
+        questionCount={questionCount}
+        questionLimit={questionLimit}
+        genre={activeGenre}
+        answerName={reveal?.identified.name}
+        siteUrl={siteUrl}
+      />
 
       <div className="neobrutal-stage flex min-h-0 flex-1 flex-col overflow-hidden bg-secondary-background p-3 sm:p-4 [@media(max-height:700px)]:p-2.5">
         <div className="mb-2.5 flex shrink-0 flex-wrap items-center justify-between gap-2 border-b-2 border-border/15 pb-2">

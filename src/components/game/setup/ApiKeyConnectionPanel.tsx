@@ -1,8 +1,8 @@
 import { PlugZap } from "lucide-react";
 
-import { ApiKeyField } from "#/components/game/ApiKeyField";
-import { ConnectionChecklist } from "#/components/game/ConnectionChecklist";
-import { ErrorBanner } from "#/components/game/ErrorBanner";
+import { ConnectionChecklist } from "#/components/game/setup/ConnectionChecklist";
+import { ApiKeyField } from "#/components/game/shared/ApiKeyField";
+import { ErrorBanner } from "#/components/game/shared/ErrorBanner";
 import { Button } from "#/components/ui/button";
 import type { ConnectionCheckState } from "#/lib/client-types";
 import type { ErrorCode } from "#/lib/contract";

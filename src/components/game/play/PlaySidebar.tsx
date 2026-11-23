@@ -7,6 +7,7 @@ import { PROBABILITY_ORDER } from "#/lib/client-types";
 type PlaySidebarProps = {
   questionCount: number;
   questionLimit: number | null;
+  genre?: string;
   isGuessOnly: boolean;
   isSubmitting: boolean;
   confirmGiveUp: boolean;
@@ -20,6 +21,7 @@ type PlaySidebarProps = {
 export function PlaySidebar({
   questionCount,
   questionLimit,
+  genre,
   isGuessOnly,
   isSubmitting,
   confirmGiveUp,
@@ -83,6 +85,15 @@ export function PlaySidebar({
               )}
             </motion.p>
           </div>
+
+          {genre && (
+            <div className="flex items-center justify-between gap-2 rounded-xl border-2 border-border bg-accent-yellow px-3 py-1.5 text-xs font-black shadow-[2px_2px_0_#141414]">
+              <span className="shrink-0 text-foreground/75">ジャンル</span>
+              <span className="min-w-0 truncate" title={genre}>
+                「{genre}」
+              </span>
+            </div>
+          )}
 
           {questionLimit !== null && (
             <div

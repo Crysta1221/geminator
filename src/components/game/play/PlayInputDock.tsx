@@ -4,8 +4,8 @@ import { type FormEvent, useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import { useVoiceInput } from "#/hooks/use-voice-input";
 import { LIMITS } from "#/lib/contract";
-import { useVoiceInput } from "#/lib/use-voice-input";
 
 type PlayInputDockProps = {
   isGuessOnly: boolean;

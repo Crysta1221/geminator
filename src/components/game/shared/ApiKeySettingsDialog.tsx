@@ -1,7 +1,7 @@
 import { FolderOpen, Music, RotateCcw, Settings, Volume2, VolumeX } from "lucide-react";
 import { type ChangeEvent, useRef } from "react";
 
-import { ApiKeyField } from "#/components/game/ApiKeyField";
+import { ApiKeyField } from "#/components/game/shared/ApiKeyField";
 import { Button } from "#/components/ui/button";
 import {
   Dialog,
@@ -63,7 +63,7 @@ export function ApiKeySettingsDialog({
             variant="neutral"
             data-slot="settings-gear-button"
             aria-label="設定を開く"
-            className="fixed right-4 bottom-4 z-40 size-12 cursor-pointer border-[3px] bg-secondary-background shadow-[4px_4px_0_#141414]"
+            className="size-12 cursor-pointer border-[3px] bg-secondary-background shadow-[4px_4px_0_#141414]"
           >
             <Settings className="size-5" aria-hidden="true" />
           </Button>

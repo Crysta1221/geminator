@@ -11,11 +11,12 @@ import {
 import { motion } from "motion/react";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 
-import { ErrorBanner } from "#/components/game/ErrorBanner";
-import { ProbabilityBar } from "#/components/game/ProbabilityBar";
+import { ErrorBanner } from "#/components/game/shared/ErrorBanner";
+import { ProbabilityBar } from "#/components/game/shared/ProbabilityBar";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import { useVoiceInput } from "#/hooks/use-voice-input";
 import {
   ASK_VERDICT_LABELS,
   GUESS_VERDICT_LABELS,
@@ -23,7 +24,6 @@ import {
   type PendingHistoryEntry,
 } from "#/lib/client-types";
 import { type AskVerdict, type ErrorCode, type GuessVerdict, LIMITS } from "#/lib/contract";
-import { useVoiceInput } from "#/lib/use-voice-input";
 
 type PlayMaximizedViewProps = {
   history: readonly HistoryEntry[];

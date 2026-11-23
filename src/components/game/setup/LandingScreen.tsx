@@ -1,12 +1,13 @@
-import { ArrowRight, MessageCircleQuestion, PenLine, Target } from "lucide-react";
+import { ArrowRight, Cpu, MessageCircleQuestion, PenLine, Target } from "lucide-react";
 import { motion } from "motion/react";
 
 import { Logo } from "#/components/brand/Logo";
 import { Button } from "#/components/ui/button";
-import { useFocusHeading } from "#/lib/use-focus-heading";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 
 type LandingScreenProps = {
   onStart: () => void;
+  onInspect: () => void;
 };
 
 const HOW_TO_PLAY = [
@@ -53,7 +54,7 @@ const HOW_TO_PLAY = [
   },
 ] as const;
 
-export function LandingScreen({ onStart }: LandingScreenProps) {
+export function LandingScreen({ onStart, onInspect }: LandingScreenProps) {
   const headingRef = useFocusHeading<HTMLHeadingElement>();
 
   return (
@@ -101,18 +102,28 @@ export function LandingScreen({ onStart }: LandingScreenProps) {
         })}
       </div>
 
-      <div className="pt-1 sm:pt-2 [@media(max-height:700px)]:pt-0">
+      <div className="flex w-full max-w-[540px] flex-col items-center justify-center gap-3 pt-1 sm:w-auto sm:flex-row sm:gap-4 sm:pt-2 [@media(max-height:700px)]:pt-0">
         <Button
           type="button"
           size="lg"
           onClick={onStart}
-          className="group h-13 min-w-[220px] cursor-pointer border-[3px] px-8 text-lg font-black sm:h-14 sm:min-w-[260px] sm:text-xl [@media(max-height:700px)]:h-11 [@media(max-height:700px)]:text-base"
+          className="group h-13 w-full min-w-[220px] cursor-pointer border-[3px] px-8 text-lg font-black sm:h-14 sm:w-auto sm:min-w-[240px] sm:text-xl [@media(max-height:700px)]:h-11 [@media(max-height:700px)]:text-base"
         >
           <span>はじめる</span>
           <ArrowRight
             className="size-5 transition-transform duration-200 group-hover:translate-x-1"
             aria-hidden="true"
           />
+        </Button>
+        <Button
+          type="button"
+          size="lg"
+          variant="neutral"
+          onClick={onInspect}
+          className="group h-13 w-full min-w-[200px] cursor-pointer border-[3px] bg-secondary-background px-6 text-base font-black sm:h-14 sm:w-auto sm:text-lg [@media(max-height:700px)]:h-11 [@media(max-height:700px)]:text-sm"
+        >
+          <Cpu className="size-5" aria-hidden="true" />
+          <span>仕組みを見る</span>
         </Button>
       </div>
     </section>

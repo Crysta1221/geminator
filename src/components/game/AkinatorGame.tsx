@@ -1,21 +1,23 @@
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from "motion/react";
 import { useEffect, useState } from "react";
 
-import { ApiKeySettingsDialog } from "#/components/game/ApiKeySettingsDialog";
-import { ConnectScreen } from "#/components/game/ConnectScreen";
-import { GenreScreen } from "#/components/game/GenreScreen";
-import { HandoffScreen } from "#/components/game/HandoffScreen";
-import { IntroScreen } from "#/components/game/IntroScreen";
-import { LandingScreen } from "#/components/game/LandingScreen";
-import { ModeScreen } from "#/components/game/ModeScreen";
-import { PlayScreen } from "#/components/game/PlayScreen";
-import { ResultScreen } from "#/components/game/ResultScreen";
-import { StartingScreen } from "#/components/game/StartingScreen";
-import { TopicScreen } from "#/components/game/TopicScreen";
-import { useAkinatorGame } from "#/lib/client-game";
+import { HowItWorksScreen } from "#/components/game/inspect/HowItWorksScreen";
+import { PlayScreen } from "#/components/game/play/PlayScreen";
+import { ResultScreen } from "#/components/game/result/ResultScreen";
+import { ConnectScreen } from "#/components/game/setup/ConnectScreen";
+import { GenreAnnounceScreen } from "#/components/game/setup/GenreAnnounceScreen";
+import { GenreScreen } from "#/components/game/setup/GenreScreen";
+import { HandoffScreen } from "#/components/game/setup/HandoffScreen";
+import { IntroScreen } from "#/components/game/setup/IntroScreen";
+import { LandingScreen } from "#/components/game/setup/LandingScreen";
+import { ModeScreen } from "#/components/game/setup/ModeScreen";
+import { StartingScreen } from "#/components/game/setup/StartingScreen";
+import { TopicScreen } from "#/components/game/setup/TopicScreen";
+import { FloatingUtilityDock } from "#/components/game/shared/FloatingUtilityDock";
+import { useAkinatorGame } from "#/hooks/use-akinator-game";
+import { useBgm, useCorrectSound } from "#/hooks/use-bgm";
 import type { WizardDirection } from "#/lib/client-types";
 import type { ConfigResult } from "#/lib/contract";
-import { useBgm, useCorrectSound } from "#/lib/use-bgm";
 
 type AkinatorGameProps = {
   config: ConfigResult;
@@ -72,8 +74,8 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
 
   return (
     <MotionConfig reducedMotion="user">
-      {/* Reserve bottom clearance for the fixed bottom-right settings gear (bottom-4 right-4 size-12) below 1360px */}
-      <main className="h-dvh w-full overflow-hidden pb-14 sm:pb-16 min-[1360px]:pb-0">
+      {/* Reserve bottom clearance for the fixed bottom-right utility dock below 1360px */}
+      <main className="h-dvh w-full overflow-hidden pb-14 min-[1360px]:pb-0 sm:pb-16">
         <AnimatePresence mode="wait" custom={game.direction} initial={false}>
           <motion.div
             key={game.phase}
@@ -84,7 +86,20 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
             exit="exit"
             className="size-full overflow-hidden"
           >
-            {game.phase === "landing" && <LandingScreen onStart={game.goToMode} />}
+            {game.phase === "landing" && (
+              <LandingScreen onStart={game.goToMode} onInspect={game.goToInspect} />
+            )}
+
+            {game.phase === "inspect" && (
+              <HowItWorksScreen
+                serverHasKey={config.serverHasKey}
+                apiKey={game.apiKey}
+                activeApiKey={game.activeApiKey}
+                onApiKeyChange={game.handleApiKeyChange}
+                onClearApiKey={game.handleClearApiKey}
+                onBack={game.backToLanding}
+              />
+            )}
 
             {game.phase === "mode" && (
               <ModeScreen
@@ -136,6 +151,10 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
 
             {game.phase === "starting" && <StartingScreen topicMode={game.draftSetup.mode} />}
 
+            {game.phase === "genre_announce" && (
+              <GenreAnnounceScreen genre={game.sessionConfig.genre} onComplete={game.startPlay} />
+            )}
+
             {game.phase === "handoff" && <HandoffScreen onStart={game.startPlay} />}
 
             {game.phase === "play" && (
@@ -144,6 +163,11 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
                 pendingEntry={game.pendingEntry}
                 questionCount={game.questionCount}
                 questionLimit={game.questionLimit}
+                genre={
+                  game.sessionConfig.mode === "genre" && game.sessionConfig.genre
+                    ? game.sessionConfig.genre
+                    : undefined
+                }
                 isGuessOnly={game.isGuessOnly}
                 isSubmitting={game.isSubmitting}
                 apiKey={game.activeApiKey}
@@ -166,15 +190,18 @@ export function AkinatorGame({ config }: AkinatorGameProps) {
                 reveal={game.reveal}
                 isLoadingReveal={game.isLoadingReveal}
                 errorCode={game.errorCode}
+                sessionConfig={game.sessionConfig}
+                siteUrl={config.siteUrl}
                 onDismissError={game.dismissError}
                 onRetryReveal={game.retryReveal}
+                onReplaySameMode={game.handleReplaySameMode}
                 onRestart={game.handleRestart}
               />
             )}
           </motion.div>
         </AnimatePresence>
 
-        <ApiKeySettingsDialog
+        <FloatingUtilityDock
           serverHasKey={config.serverHasKey}
           apiKey={game.apiKey}
           bgmSettings={game.bgmSettings}

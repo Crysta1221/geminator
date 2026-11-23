@@ -1,20 +1,20 @@
 import { ArrowLeft, ArrowRight, Dices } from "lucide-react";
 import { type FormEvent, useState } from "react";
 
-import { ErrorBanner } from "#/components/game/ErrorBanner";
 import {
   inferLimitMode,
   type LimitMode,
   resolveQuestionLimit,
-} from "#/components/game/QuestionLimitField";
-import { TopicOptionsFieldset } from "#/components/game/TopicOptionsFieldset";
-import { GENRE_STEPS, WizardShell } from "#/components/game/WizardShell";
+} from "#/components/game/setup/QuestionLimitField";
+import { TopicOptionsFieldset } from "#/components/game/setup/TopicOptionsFieldset";
+import { ErrorBanner } from "#/components/game/shared/ErrorBanner";
+import { GENRE_STEPS, WizardShell } from "#/components/game/shared/WizardShell";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { DraftSetup } from "#/lib/client-types";
 import { type ErrorCode, LIMITS } from "#/lib/contract";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 type GenreScreenProps = {
   initialDraft: DraftSetup;

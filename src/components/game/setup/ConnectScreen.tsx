@@ -1,12 +1,12 @@
 import { AlertTriangle, ArrowLeft, ArrowRight, ExternalLink, Server } from "lucide-react";
 import { useEffect, useRef } from "react";
 
-import { ApiKeyConnectionPanel } from "#/components/game/ApiKeyConnectionPanel";
-import { CUSTOM_STEPS, GENRE_STEPS, WizardShell } from "#/components/game/WizardShell";
+import { ApiKeyConnectionPanel } from "#/components/game/setup/ApiKeyConnectionPanel";
+import { CUSTOM_STEPS, GENRE_STEPS, WizardShell } from "#/components/game/shared/WizardShell";
 import { Button } from "#/components/ui/button";
+import { useFocusHeading } from "#/hooks/use-focus-heading";
 import type { ConnectionCheckState, TopicMode } from "#/lib/client-types";
 import type { ErrorCode } from "#/lib/contract";
-import { useFocusHeading } from "#/lib/use-focus-heading";
 
 type ConnectScreenProps = {
   topicMode: TopicMode;

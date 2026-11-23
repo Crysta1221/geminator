@@ -48,12 +48,15 @@ const guessHistorySchema = z.object({
 });
 
 const sessionSchema = z.object({
-  phase: z.enum(["handoff", "play", "result"]),
+  phase: z.enum(["handoff", "genre_announce", "play", "result"]),
   token: z.string().min(10).max(8000),
   history: z.array(z.union([askHistorySchema, guessHistorySchema])),
   referenceBlobs: z.array(z.string().max(200_000)).max(500),
   questionLimit: z.number().int().min(1).max(99).nullable().optional(),
   outcome: z.enum(["correct", "gave_up"]).optional(),
+  mode: z.enum(["custom", "genre"]).optional(),
+  genre: z.string().max(LIMITS.genre).optional(),
+  useSearch: z.boolean().optional(),
 });
 
 const verifiedSchema = z.object({

@@ -9,12 +9,14 @@ import type {
 
 export type GamePhase =
   | "landing"
+  | "inspect"
   | "mode"
   | "intro"
   | "topic"
   | "genre"
   | "connect"
   | "starting"
+  | "genre_announce"
   | "handoff"
   | "play"
   | "result";
@@ -59,13 +61,23 @@ export type DraftSetup = {
   questionLimit: number | null;
 };
 
+export type ActiveSessionConfig = {
+  mode: TopicMode;
+  genre: string;
+  useSearch: boolean;
+  questionLimit: number | null;
+};
+
 export type PersistedSession = {
-  phase: "handoff" | "play" | "result";
+  phase: "handoff" | "genre_announce" | "play" | "result";
   token: string;
   history: HistoryEntry[];
   referenceBlobs: string[];
   questionLimit?: number | null;
   outcome?: GameOutcome;
+  mode?: TopicMode;
+  genre?: string;
+  useSearch?: boolean;
 };
 
 export type ProbeViewState =
